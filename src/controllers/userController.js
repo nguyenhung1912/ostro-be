@@ -8,3 +8,7 @@ export const authMe = async (req, res) => {
     return res.status(500).json({ message: "System error" });
   }
 };
+
+export const test = async (req, res) => {
+  return res.sendStatus(204);
+};
