@@ -1,43 +1,45 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-export const protectedRoute = (req, res, next) => {
+export const protectedRoute = async (req, res, next) => {
   try {
     // get token from header
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
+    const authHeader = req.headers.authorization || "";
+    const [scheme, token] = authHeader.split(" ");
 
-    if (!token) {
+    if (scheme?.toLowerCase() !== "bearer" || !token) {
       return res.status(401).json({ message: "Access token not found" });
     }
 
+    const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+
+    if (!accessTokenSecret) {
+      throw new Error("ACCESS_TOKEN_SECRET is required");
+    }
+
     // validate token
-    jwt.verify(
-      token,
-      process.env.ACCESS_TOKEN_SECRET,
-      async (err, decodedUser) => {
-        if (err) {
-          console.error(err);
+    let decodedUser;
 
-          return res
-            .status(403)
-            .json({ message: "Access token expired or invalid" });
-        }
+    try {
+      decodedUser = jwt.verify(token, accessTokenSecret);
+    } catch {
+      return res
+        .status(403)
+        .json({ message: "Access token expired or invalid" });
+    }
 
-        // find user
-        const user = await User.findById(decodedUser.userId).select(
-          "-hashedPassword",
-        );
+    // find user
+    const user = await User.findById(decodedUser.userId)
+      .select("-hashedPassword")
+      .lean();
 
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-        // attach user to req
-        req.user = user;
-        next();
-      },
-    );
+    // attach user to req
+    req.user = user;
+    return next();
   } catch (error) {
     console.error("Error verifying JWT in auth middleware", error);
     return res.status(500).json({ message: "System error" });
