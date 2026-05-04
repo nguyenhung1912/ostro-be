@@ -13,7 +13,7 @@ const participantSchema = new mongoose.Schema(
     },
   },
   {
-    _id: falase,
+    _id: false,
   },
 );
 
@@ -62,6 +62,11 @@ const conversationSchema = new mongoose.Schema(
     participants: {
       type: [participantSchema],
       required: true,
+      validate: {
+        validator: (participants) =>
+          Array.isArray(participants) && participants.length > 0,
+        message: "Conversation must have at least one participant",
+      },
     },
     group: {
       type: groupSchema,
@@ -91,7 +96,7 @@ const conversationSchema = new mongoose.Schema(
 );
 
 conversationSchema.index({
-  "participant.userId": 1,
+  "participants.userId": 1,
   lastMessageAt: -1,
 });
 
