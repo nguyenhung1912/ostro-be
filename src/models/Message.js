@@ -19,12 +19,22 @@ const messageSchema = new mongoose.Schema(
     },
     imgUrl: {
       type: String,
+      trim: true,
     },
   },
   {
     timestamps: true,
   },
 );
+
+// chặn gửi tin nhắn trống
+messageSchema.pre("validate", function (next) {
+  if (!this.content && !this.imgUrl) {
+    return next(new Error("Message must have content or imgUrl"));
+  }
+
+  return next();
+});
 
 messageSchema.index({ conversationId: 1, createdAt: -1 });
 
