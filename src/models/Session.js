@@ -24,6 +24,6 @@ const sessionSchema = new mongoose.Schema(
 );
 
 // auto delete when expired
-sessionSchema.index({ expiresAt: 1 }, { expireAfterSecond: 0 });
+sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model("Session", sessionSchema);
