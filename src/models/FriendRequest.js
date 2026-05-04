@@ -11,9 +11,16 @@ const friendRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      validate: {
+        validator(value) {
+          return this.from?.toString() !== value?.toString();
+        },
+        message: "Cannot send friend request to the same user",
+      },
     },
     message: {
       type: String,
+      trim: true,
       maxlength: 300,
     },
   },
