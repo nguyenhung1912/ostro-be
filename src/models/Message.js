@@ -28,12 +28,10 @@ const messageSchema = new mongoose.Schema(
 );
 
 // chặn gửi tin nhắn trống
-messageSchema.pre("validate", function (next) {
+messageSchema.pre("validate", function () {
   if (!this.content && !this.imgUrl) {
-    return next(new Error("Message must have content or imgUrl"));
+    throw new Error("Message must have content or imgUrl");
   }
-
-  return next();
 });
 
 messageSchema.index({ conversationId: 1, createdAt: -1 });
