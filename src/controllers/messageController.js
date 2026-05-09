@@ -1,5 +1,6 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
+import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
 
 export const sendDirectMessage = async (req, res) => {
   try {
@@ -33,7 +34,16 @@ export const sendDirectMessage = async (req, res) => {
       senderId,
       content,
     });
-  } catch (error) {}
+
+    updateConversationAfterCreateMessage(conversation, message, senderId);
+
+    await conversation.save();
+
+    return res.status(201).json({ message });
+  } catch (error) {
+    console.error("Lỗi xảy ra khi gửi tin nhắn trực tiếp", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
 };
 
 export const sendGroupMessage = async (req, res) => {
