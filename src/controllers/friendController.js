@@ -65,7 +65,7 @@ export const sendFriendRequest = async (req, res) => {
 export const acceptFriendRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const request = await FriendRequest.findById(requestId);
 

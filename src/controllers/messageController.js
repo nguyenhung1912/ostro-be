@@ -14,7 +14,7 @@ export const sendDirectMessage = async (req, res) => {
     }
 
     if (conversationId) {
-      conversation = await Conversation.findById(conversation);
+      conversation = await Conversation.findById(conversationId);
     }
 
     if (!conversation) {
@@ -22,7 +22,7 @@ export const sendDirectMessage = async (req, res) => {
         type: "direct",
         participants: [
           { userId: senderId, joinedAt: new Date() },
-          { userId: recipientIdId, joinedAt: new Date() },
+          { userId: recipientId, joinedAt: new Date() },
         ],
         lastMessageAt: new Date(),
         unreadCounts: new Map(),
