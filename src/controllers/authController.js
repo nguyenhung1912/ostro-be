@@ -118,7 +118,7 @@ export const signUp = async (req, res) => {
       username: normalizedUsername,
       hashedPassword,
       email: normalizedEmail,
-      displayName: `${normalizedFirstName} ${normalizedLastName}`,
+      displayName: `${normalizedLastName} ${normalizedFirstName}`,
     });
 
     // return
