@@ -12,13 +12,34 @@ import cors from "cors";
 
 dotenv.config();
 
+const getRequiredEnv = (name) => {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+
+  return value;
+};
+
+let clientUrl;
+
+try {
+  getRequiredEnv("MONGODB_CONNECTION_STRING");
+  getRequiredEnv("ACCESS_TOKEN_SECRET");
+  clientUrl = getRequiredEnv("CLIENT_URL");
+} catch (error) {
+  console.error("Startup configuration error:", error.message);
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // middlewares
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({ origin: clientUrl, credentials: true }));
 
 // public routes
 app.use("/api/auth", authRoute);
