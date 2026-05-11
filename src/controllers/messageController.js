@@ -1,10 +1,8 @@
-import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { findOrCreateDirectConversation } from "../utils/conversationHelper.js";
 import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
-
-const isValidObjectId = (value) => mongoose.isValidObjectId(value);
+import { isValidObjectId } from "../utils/validation.js";
 
 export const sendDirectMessage = async (req, res) => {
   try {
