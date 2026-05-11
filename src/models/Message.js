@@ -30,7 +30,7 @@ const messageSchema = new mongoose.Schema(
 // chặn gửi tin nhắn trống
 messageSchema.pre("validate", function () {
   if (!this.content && !this.imgUrl) {
-    throw new Error("Message must have content or imgUrl");
+    throw new Error("Tin nhắn phải có nội dung hoặc hình ảnh");
   }
 });
 
