@@ -1,14 +1,18 @@
 import Friend from "../models/Friend.js";
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
+import { isValidObjectId } from "../utils/validation.js";
 
 export const sendFriendRequest = async (req, res) => {
   try {
     const { to, message } = req.body;
-
     const from = req.user._id;
 
-    if (from === to) {
+    if (!isValidObjectId(to)) {
+      return res.status(400).json({ message: "Id người dùng không hợp lệ" });
+    }
+
+    if (from.toString() === to.toString()) {
       return res
         .status(400)
         .json({ message: "Không thể gửi lời mời kết bạn cho chính mình" });
@@ -67,6 +71,12 @@ export const acceptFriendRequest = async (req, res) => {
     const { requestId } = req.params;
     const userId = req.user._id;
 
+    if (!isValidObjectId(requestId)) {
+      return res
+        .status(400)
+        .json({ message: "Id lời mời kết bạn không hợp lệ" });
+    }
+
     const request = await FriendRequest.findById(requestId);
 
     if (!request) {
@@ -81,7 +91,7 @@ export const acceptFriendRequest = async (req, res) => {
         .json({ message: "Bạn không có quyền chấp nhận lời mời này" });
     }
 
-    const friend = await Friend.create({
+    await Friend.create({
       userA: request.from,
       userB: request.to,
     });
@@ -111,6 +121,12 @@ export const declineFriendRequest = async (req, res) => {
     const { requestId } = req.params;
     const userId = req.user._id;
 
+    if (!isValidObjectId(requestId)) {
+      return res
+        .status(400)
+        .json({ message: "Id lời mời kết bạn không hợp lệ" });
+    }
+
     const request = await FriendRequest.findById(requestId);
 
     if (!request) {
@@ -139,14 +155,7 @@ export const getAllFriends = async (req, res) => {
     const userId = req.user._id;
 
     const friendships = await Friend.find({
-      $or: [
-        {
-          userA: userId,
-        },
-        {
-          userB: userId,
-        },
-      ],
+      $or: [{ userA: userId }, { userB: userId }],
     })
       .populate("userA", "_id displayName avatarUrl")
       .populate("userB", "_id displayName avatarUrl")
@@ -178,7 +187,7 @@ export const getFriendRequests = async (req, res) => {
       FriendRequest.find({ to: userId }).populate("from", populateFields),
     ]);
 
-    res.status(200).json({ sent, received });
+    return res.status(200).json({ sent, received });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách yêu cầu kết bạn", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });

@@ -15,7 +15,7 @@ const friendRequestSchema = new mongoose.Schema(
         validator(value) {
           return this.from?.toString() !== value?.toString();
         },
-        message: "Cannot send friend request to the same user",
+        message: "Không thể gửi lời mời kết bạn cho chính mình",
       },
     },
     message: {
@@ -30,8 +30,6 @@ const friendRequestSchema = new mongoose.Schema(
 );
 
 friendRequestSchema.index({ from: 1, to: 1 }, { unique: true });
-
-friendRequestSchema.index({ from: 1 });
 
 friendRequestSchema.index({ to: 1 });
 

@@ -27,7 +27,7 @@ friendSchema.pre("validate", function () {
   const b = this.userB.toString();
 
   if (a === b) {
-    throw new Error("Cannot create friendship with the same user");
+    throw new Error("Không thể tạo quan hệ bạn bè với chính mình");
   }
 
   if (a > b) {
