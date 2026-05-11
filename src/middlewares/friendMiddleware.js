@@ -1,16 +1,15 @@
-import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 import Friend from "../models/Friend.js";
+import { isValidObjectId } from "../utils/validation.js";
 
 const pair = (a, b) => (a < b ? [a, b] : [b, a]);
-const isValidObjectId = (value) => mongoose.isValidObjectId(value);
 
 export const checkFriendship = async (req, res, next) => {
   try {
     const me = req.user._id.toString();
     const conversationId = req.body?.conversationId ?? null;
     const recipientId = req.body?.recipientId ?? null;
-    const memberIds = req.body?.memberIds ?? req.body?.memeberIds ?? [];
+    const memberIds = req.body?.memberIds ?? [];
 
     if (conversationId && !recipientId && memberIds.length === 0) {
       return next();
