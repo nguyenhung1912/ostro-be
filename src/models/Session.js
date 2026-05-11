@@ -23,7 +23,7 @@ const sessionSchema = new mongoose.Schema(
   },
 );
 
-// auto delete when expired
+// tự động xoá khi hết hạn
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model("Session", sessionSchema);
