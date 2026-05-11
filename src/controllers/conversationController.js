@@ -1,15 +1,12 @@
-import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import {
   findOrCreateDirectConversation,
   markConversationAsRead,
 } from "../utils/conversationHelper.js";
+import { isValidObjectId, areValidObjectIds } from "../utils/validation.js";
 
 const MAX_MESSAGE_LIMIT = 100;
-const isValidObjectId = (value) => mongoose.isValidObjectId(value);
-const areValidObjectIds = (values) =>
-  Array.isArray(values) && values.every((value) => mongoose.isValidObjectId(value));
 
 export const createConversation = async (req, res) => {
   try {
