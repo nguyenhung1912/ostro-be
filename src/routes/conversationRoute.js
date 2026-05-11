@@ -4,11 +4,11 @@ import {
   getConversation,
   getMessages,
 } from "../controllers/conversationController.js";
-import { checkFriendship } from "../middlewares/friendMiddleware.js";
+import { checkFriendShip } from "../middlewares/friendMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", checkFriendship, createConversation);
+router.post("/", checkFriendShip, createConversation);
 router.post("/", getConversation);
 router.post("/:conversationId/messages", getMessages);
 
