@@ -33,7 +33,7 @@ const groupSchema = new mongoose.Schema(
 
 const lastMessageSchema = new mongoose.Schema(
   {
-    _id: { type: String },
+    _id: { type: mongoose.Schema.Types.ObjectId },
     content: {
       type: String,
       default: null,
@@ -65,7 +65,7 @@ const conversationSchema = new mongoose.Schema(
       validate: {
         validator: (participants) =>
           Array.isArray(participants) && participants.length > 0,
-        message: "Conversation must have at least one participant",
+        message: "Cuộc trò chuyện phải có ít nhất một thành viên",
       },
     },
     group: {

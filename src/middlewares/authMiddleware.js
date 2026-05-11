@@ -3,21 +3,21 @@ import User from "../models/User.js";
 
 export const protectedRoute = async (req, res, next) => {
   try {
-    // get token from header
+    // lấy token từ header
     const authHeader = req.headers.authorization || "";
     const [scheme, token] = authHeader.split(" ");
 
     if (scheme?.toLowerCase() !== "bearer" || !token) {
-      return res.status(401).json({ message: "Access token not found" });
+      return res.status(401).json({ message: "Không tìm thấy access token" });
     }
 
     const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
 
     if (!accessTokenSecret) {
-      throw new Error("ACCESS_TOKEN_SECRET is required");
+      throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
     }
 
-    // validate token
+    // xác thực token
     let decodedUser;
 
     try {
@@ -25,23 +25,23 @@ export const protectedRoute = async (req, res, next) => {
     } catch {
       return res
         .status(403)
-        .json({ message: "Access token expired or invalid" });
+        .json({ message: "Access token đã hết hạn hoặc không hợp lệ" });
     }
 
-    // find user
+    // tìm người dùng
     const user = await User.findById(decodedUser.userId)
       .select("-hashedPassword")
       .lean();
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    // attach user to req
+    // gắn user vào request
     req.user = user;
     return next();
   } catch (error) {
-    console.error("Error verifying JWT in auth middleware", error);
-    return res.status(500).json({ message: "System error" });
+    console.error("Lỗi xác thực JWT", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
