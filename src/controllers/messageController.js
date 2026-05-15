@@ -1,8 +1,12 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { findOrCreateDirectConversation } from "../utils/conversationHelper.js";
-import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
+import {
+  emitNewMessage,
+  updateConversationAfterCreateMessage,
+} from "../utils/messageHelper.js";
 import { isValidObjectId } from "../utils/validation.js";
+import { io } from "../socket/index.js";
 
 const normalizeMessageField = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -71,7 +75,10 @@ export const sendDirectMessage = async (req, res) => {
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
+
     await conversation.save();
+
+    emitNewMessage(io, conversation, message);
 
     return res.status(201).json({ message });
   } catch (error) {
@@ -102,7 +109,10 @@ export const sendGroupMessage = async (req, res) => {
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
+
     await conversation.save();
+
+    emitNewMessage(io, conversation, message);
 
     return res.status(201).json({ message });
   } catch (error) {
