@@ -91,9 +91,16 @@ export const acceptFriendRequest = async (req, res) => {
         .json({ message: "Bạn không có quyền chấp nhận lời mời này" });
     }
 
+    let userA = request.from.toString();
+    let userB = request.to.toString();
+
+    if (userA > userB) {
+      [userA, userB] = [userB, userA];
+    }
+
     await Friend.create({
-      userA: request.from,
-      userB: request.to,
+      userA,
+      userB,
     });
 
     await FriendRequest.findByIdAndDelete(requestId);
