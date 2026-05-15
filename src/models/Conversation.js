@@ -1,5 +1,18 @@
 import mongoose from "mongoose";
 
+const buildDirectKeyFromParticipants = (participants) => {
+  if (!Array.isArray(participants) || participants.length !== 2) {
+    return null;
+  }
+
+  const ids = participants
+    .map((participant) => participant?.userId?.toString?.())
+    .filter(Boolean)
+    .sort();
+
+  return ids.length === 2 ? ids.join(":") : null;
+};
+
 const participantSchema = new mongoose.Schema(
   {
     userId: {
@@ -59,6 +72,10 @@ const conversationSchema = new mongoose.Schema(
       enum: ["direct", "group"],
       required: true,
     },
+    directKey: {
+      type: String,
+      default: null,
+    },
     participants: {
       type: [participantSchema],
       required: true,
@@ -95,10 +112,28 @@ const conversationSchema = new mongoose.Schema(
   },
 );
 
+conversationSchema.pre("validate", function () {
+  this.directKey =
+    this.type === "direct"
+      ? buildDirectKeyFromParticipants(this.participants)
+      : null;
+});
+
 conversationSchema.index({
   "participants.userId": 1,
   lastMessageAt: -1,
 });
+
+conversationSchema.index(
+  { directKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      type: "direct",
+      directKey: { $type: "string" },
+    },
+  },
+);
 
 const Conversation = mongoose.model("Conversation", conversationSchema);
 export default Conversation;
