@@ -31,7 +31,9 @@ export const createConversation = async (req, res) => {
         .json({ message: "Danh sach thanh vien khong hop le." });
     }
 
-    const normalizedMemberIds = memberIds.map((memberId) => memberId.toString());
+    const normalizedMemberIds = memberIds.map((memberId) =>
+      memberId.toString(),
+    );
     const uniqueMemberIds = [...new Set(normalizedMemberIds)];
 
     if (uniqueMemberIds.length !== normalizedMemberIds.length) {
@@ -70,7 +72,10 @@ export const createConversation = async (req, res) => {
         type: "group",
         participants: [
           { userId, joinedAt: new Date() },
-          ...uniqueMemberIds.map((id) => ({ userId: id, joinedAt: new Date() })),
+          ...uniqueMemberIds.map((id) => ({
+            userId: id,
+            joinedAt: new Date(),
+          })),
         ],
         group: {
           name: normalizedName,
@@ -212,5 +217,19 @@ export const getMessages = async (req, res) => {
   } catch (error) {
     console.error("Loi khi lay tin nhan", error);
     return res.status(500).json({ message: "Loi he thong." });
+  }
+};
+
+export const getUserConversationsForSocketIO = async (userId) => {
+  try {
+    const conversations = await Conversation.find(
+      { "participants.userId": userId },
+      { _id: 1 },
+    );
+
+    return conversations.map((c) => c._id.toString());
+  } catch (error) {
+    console.error("Lỗi khi fetch conversations: ", error);
+    return [];
   }
 };
