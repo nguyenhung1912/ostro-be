@@ -87,8 +87,7 @@ export const signUp = async (req, res) => {
       !normalizedLastName
     ) {
       return res.status(400).json({
-        message:
-          "Tên đăng nhập, mật khẩu, email, họ và tên là bắt buộc",
+        message: "Tên đăng nhập, mật khẩu, email, họ và tên là bắt buộc",
       });
     }
 
@@ -206,9 +205,9 @@ export const signOut = async (req, res) => {
     if (token) {
       const tokenHash = hashRefreshToken(token);
       await Session.deleteOne({ refreshToken: tokenHash });
-      res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTIONS);
     }
 
+    res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTIONS);
     return res.sendStatus(204);
   } catch (err) {
     console.error("Lỗi khi đăng xuất", err);

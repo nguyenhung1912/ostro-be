@@ -12,45 +12,73 @@ export const createConversation = async (req, res) => {
   try {
     const { type, name, memberIds } = req.body;
     const userId = req.user._id;
+    const normalizedName = typeof name === "string" ? name.trim() : "";
 
-    if (!type || !memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    if (
+      !type ||
+      !memberIds ||
+      !Array.isArray(memberIds) ||
+      memberIds.length === 0
+    ) {
       return res.status(400).json({
-        message: "Loại cuộc trò chuyện và danh sách thành viên là bắt buộc.",
+        message: "Loai cuoc tro chuyen va danh sach thanh vien la bat buoc.",
       });
     }
 
     if (!areValidObjectIds(memberIds)) {
-      return res.status(400).json({ message: "Danh sách thành viên không hợp lệ." });
+      return res
+        .status(400)
+        .json({ message: "Danh sach thanh vien khong hop le." });
+    }
+
+    const normalizedMemberIds = memberIds.map((memberId) =>
+      memberId.toString(),
+    );
+    const uniqueMemberIds = [...new Set(normalizedMemberIds)];
+
+    if (uniqueMemberIds.length !== normalizedMemberIds.length) {
+      return res.status(400).json({
+        message: "Danh sach thanh vien khong duoc trung lap.",
+      });
     }
 
     let conversation;
 
     if (type === "direct") {
-      if (memberIds.length !== 1) {
+      if (uniqueMemberIds.length !== 1) {
         return res.status(400).json({
-          message: "Cuộc trò chuyện trực tiếp chỉ được phép có một người nhận.",
+          message: "Cuoc tro chuyen truc tiep chi duoc phep co mot nguoi nhan.",
+        });
+      }
+
+      if (uniqueMemberIds[0] === userId.toString()) {
+        return res.status(400).json({
+          message: "Khong the tao cuoc tro chuyen truc tiep voi chinh minh.",
         });
       }
 
       conversation = await findOrCreateDirectConversation({
         userId,
-        otherUserId: memberIds[0],
+        otherUserId: uniqueMemberIds[0],
       });
     }
 
     if (type === "group") {
-      if (!name) {
-        return res.status(400).json({ message: "Tên nhóm là bắt buộc." });
+      if (!normalizedName) {
+        return res.status(400).json({ message: "Ten nhom la bat buoc." });
       }
 
       conversation = new Conversation({
         type: "group",
         participants: [
           { userId, joinedAt: new Date() },
-          ...memberIds.map((id) => ({ userId: id, joinedAt: new Date() })),
+          ...uniqueMemberIds.map((id) => ({
+            userId: id,
+            joinedAt: new Date(),
+          })),
         ],
         group: {
-          name,
+          name: normalizedName,
           createdBy: userId,
         },
         lastMessageAt: new Date(),
@@ -60,7 +88,9 @@ export const createConversation = async (req, res) => {
     }
 
     if (!conversation) {
-      return res.status(400).json({ message: "Loại cuộc trò chuyện không hợp lệ." });
+      return res
+        .status(400)
+        .json({ message: "Loai cuoc tro chuyen khong hop le." });
     }
 
     await conversation.populate([
@@ -71,8 +101,8 @@ export const createConversation = async (req, res) => {
 
     return res.status(201).json({ conversation });
   } catch (error) {
-    console.error("Lỗi khi tạo cuộc trò chuyện", error);
-    return res.status(500).json({ message: "Lỗi hệ thống." });
+    console.error("Loi khi tao cuoc tro chuyen", error);
+    return res.status(500).json({ message: "Loi he thong." });
   }
 };
 
@@ -97,12 +127,14 @@ export const getConversations = async (req, res) => {
       });
 
     const formattedConversations = conversations.map((conversation) => {
-      const participants = (conversation.participants || []).map((participant) => ({
-        _id: participant.userId?._id,
-        displayName: participant.userId?.displayName,
-        avatarUrl: participant.userId?.avatarUrl ?? null,
-        joinedAt: participant.joinedAt,
-      }));
+      const participants = (conversation.participants || []).map(
+        (participant) => ({
+          _id: participant.userId?._id,
+          displayName: participant.userId?.displayName,
+          avatarUrl: participant.userId?.avatarUrl ?? null,
+          joinedAt: participant.joinedAt,
+        }),
+      );
 
       return {
         ...conversation.toObject(),
@@ -115,8 +147,8 @@ export const getConversations = async (req, res) => {
 
     return res.status(200).json({ conversations: formattedConversations });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách cuộc trò chuyện", error);
-    return res.status(500).json({ message: "Lỗi hệ thống." });
+    console.error("Loi khi lay danh sach cuoc tro chuyen", error);
+    return res.status(500).json({ message: "Loi he thong." });
   }
 };
 
@@ -128,11 +160,15 @@ export const getMessages = async (req, res) => {
     const parsedLimit = Number.parseInt(limit, 10);
 
     if (!isValidObjectId(conversationId)) {
-      return res.status(400).json({ message: "Id cuộc trò chuyện không hợp lệ." });
+      return res
+        .status(400)
+        .json({ message: "Id cuoc tro chuyen khong hop le." });
     }
 
     if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
-      return res.status(400).json({ message: "Giới hạn truy vấn không hợp lệ." });
+      return res
+        .status(400)
+        .json({ message: "Gioi han truy van khong hop le." });
     }
 
     const pageLimit = Math.min(parsedLimit, MAX_MESSAGE_LIMIT);
@@ -143,7 +179,7 @@ export const getMessages = async (req, res) => {
 
     if (!hasAccess) {
       return res.status(403).json({
-        message: "Bạn không có quyền xem tin nhắn của cuộc trò chuyện này.",
+        message: "Ban khong co quyen xem tin nhan cua cuoc tro chuyen nay.",
       });
     }
 
@@ -153,7 +189,9 @@ export const getMessages = async (req, res) => {
       const parsedCursor = new Date(cursor);
 
       if (Number.isNaN(parsedCursor.getTime())) {
-        return res.status(400).json({ message: "Con trỏ phân trang không hợp lệ." });
+        return res
+          .status(400)
+          .json({ message: "Con tro phan trang khong hop le." });
       }
 
       query.createdAt = { $lt: parsedCursor };
@@ -166,9 +204,9 @@ export const getMessages = async (req, res) => {
     let nextCursor = null;
 
     if (messages.length > pageLimit) {
+      messages.pop();
       const nextMessage = messages[messages.length - 1];
       nextCursor = nextMessage.createdAt.toISOString();
-      messages.pop();
     }
 
     messages = messages.reverse();
@@ -177,7 +215,21 @@ export const getMessages = async (req, res) => {
 
     return res.status(200).json({ messages, nextCursor });
   } catch (error) {
-    console.error("Lỗi khi lấy tin nhắn", error);
-    return res.status(500).json({ message: "Lỗi hệ thống." });
+    console.error("Loi khi lay tin nhan", error);
+    return res.status(500).json({ message: "Loi he thong." });
+  }
+};
+
+export const getUserConversationsForSocketIO = async (userId) => {
+  try {
+    const conversations = await Conversation.find(
+      { "participants.userId": userId },
+      { _id: 1 },
+    );
+
+    return conversations.map((c) => c._id.toString());
+  } catch (error) {
+    console.error("Lỗi khi fetch conversations: ", error);
+    return [];
   }
 };

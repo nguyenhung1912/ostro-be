@@ -9,6 +9,7 @@ import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
+import { app, server } from "./socket/index.js";
 
 dotenv.config();
 
@@ -33,7 +34,6 @@ try {
   process.exit(1);
 }
 
-const app = express();
 const PORT = process.env.PORT || 5001;
 
 // middlewares
@@ -55,7 +55,7 @@ app.use("/api/conversations", conversationRoute);
 const startServer = async () => {
   await connectDB();
 
-  const server = app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server đã khởi động trên cổng ${PORT}`);
   });
 
