@@ -30,7 +30,7 @@ io.on("connection", async (socket) => {
   io.emit("online-users", Array.from(onlineUsers.keys()));
 
   const conversationIds = await getUserConversationsForSocketIO(user._id);
-  conversationIds.forEch((id) => {
+  conversationIds.forEach((id) => {
     socket.join(id);
   });
 
