@@ -94,7 +94,18 @@ export const createConversation = async (req, res) => {
       { path: "lastMessage.senderId", select: "displayName avatarUrl" },
     ]);
 
-    return res.status(201).json({ conversation });
+    const participants = (conversation.participants || []).map(
+      (participant) => ({
+        _id: participant.userId?._id,
+        displayName: participant.userId?.displayName,
+        avatarUrl: participant.userId?.avatarUrl ?? null,
+        joinedAt: participant.joinedAt,
+      }),
+    );
+
+    const formatted = { ...conversation.toObject(), participants };
+
+    return res.status(201).json({ conversation: formatted });
   } catch (error) {
     console.error("Loi khi tao cuoc tro chuyen", error);
     return res.status(500).json({ message: "Loi he thong." });
@@ -268,13 +279,11 @@ export const markAsSeen = async (req, res) => {
       },
     });
 
-    return res
-      .status(200)
-      .json({
-        message: "Marked as seen",
-        seenBy: updated?.seenBy || [],
-        myUnreadCount: updated?.unreadCounts[userId] || 0,
-      });
+    return res.status(200).json({
+      message: "Marked as seen",
+      seenBy: updated?.seenBy || [],
+      myUnreadCount: updated?.unreadCounts[userId] || 0,
+    });
   } catch (error) {
     console.error("Lỗi khi mark as seen", error);
     return res.status(500).json({ message: "Lỗi hệ thống" });
