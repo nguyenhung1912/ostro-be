@@ -20,16 +20,14 @@ const normalizeString = (value) =>
 const normalizeUsername = (username) => normalizeString(username).toLowerCase();
 const normalizeEmail = (email) => normalizeString(email).toLowerCase();
 
-const getAccessTokenSecret = () => {
-  if (!process.env.ACCESS_TOKEN_SECRET) {
-    throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
-  }
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 
-  return process.env.ACCESS_TOKEN_SECRET;
-};
+if (!ACCESS_TOKEN_SECRET) {
+  throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
+}
 
 const createAccessToken = (userId) =>
-  jwt.sign({ userId: userId.toString() }, getAccessTokenSecret(), {
+  jwt.sign({ userId: userId.toString() }, ACCESS_TOKEN_SECRET, {
     expiresIn: ACCESS_TOKEN_TTL,
   });
 
@@ -223,19 +221,13 @@ export const refreshToken = async (req, res) => {
       return res.status(401).json({ message: "Token không tồn tại" });
     }
 
-    // kiểm tra refresh token trong DB
+    // kiểm tra refresh token trong DB (TTL index tự động xóa session hết hạn)
     const session = await findSessionByRefreshToken(token);
 
     if (!session) {
       return res
         .status(403)
         .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
-    }
-
-    // kiểm tra hạn
-    if (session.expiresAt < new Date()) {
-      await Session.deleteOne({ _id: session._id });
-      return res.status(403).json({ message: "Token đã hết hạn" });
     }
 
     // tạo access token mới
