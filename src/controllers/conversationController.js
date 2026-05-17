@@ -5,6 +5,7 @@ import {
   markConversationAsRead,
 } from "../utils/conversationHelper.js";
 import { isValidObjectId, areValidObjectIds } from "../utils/validation.js";
+import { io } from "../socket/index.js";
 
 const MAX_MESSAGE_LIMIT = 100;
 
