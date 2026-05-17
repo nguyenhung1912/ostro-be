@@ -20,14 +20,15 @@ const normalizeString = (value) =>
 const normalizeUsername = (username) => normalizeString(username).toLowerCase();
 const normalizeEmail = (email) => normalizeString(email).toLowerCase();
 
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
-
-if (!ACCESS_TOKEN_SECRET) {
-  throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
-}
+const getAccessTokenSecret = () => {
+  const secret = process.env.ACCESS_TOKEN_SECRET;
+  if (!secret)
+    throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
+  return secret;
+};
 
 const createAccessToken = (userId) =>
-  jwt.sign({ userId: userId.toString() }, ACCESS_TOKEN_SECRET, {
+  jwt.sign({ userId: userId.toString() }, getAccessTokenSecret(), {
     expiresIn: ACCESS_TOKEN_TTL,
   });
 
