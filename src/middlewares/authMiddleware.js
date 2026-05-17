@@ -3,7 +3,6 @@ import User from "../models/User.js";
 
 export const protectedRoute = async (req, res, next) => {
   try {
-    // lấy token từ header
     const authHeader = req.headers.authorization || "";
     const [scheme, token] = authHeader.split(" ");
 
@@ -11,24 +10,16 @@ export const protectedRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Không tìm thấy access token" });
     }
 
-    const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-
-    if (!accessTokenSecret) {
-      throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
-    }
-
-    // xác thực token
     let decodedUser;
 
     try {
-      decodedUser = jwt.verify(token, accessTokenSecret);
+      decodedUser = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
     } catch {
       return res
         .status(403)
         .json({ message: "Access token đã hết hạn hoặc không hợp lệ" });
     }
 
-    // tìm người dùng
     const user = await User.findById(decodedUser.userId)
       .select("-hashedPassword")
       .lean();
@@ -37,7 +28,6 @@ export const protectedRoute = async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    // gắn user vào request
     req.user = user;
     return next();
   } catch (error) {
