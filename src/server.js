@@ -10,6 +10,7 @@ import conversationRoute from "./routes/conversationRoute.js";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
 import { app, server } from "./socket/index.js";
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 
@@ -40,6 +41,13 @@ const PORT = process.env.PORT || 5001;
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(cors({ origin: clientUrl, credentials: true }));
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // public routes
 app.use("/api/auth", authRoute);
