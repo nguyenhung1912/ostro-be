@@ -28,16 +28,20 @@ const userSchema = new mongoose.Schema(
     },
     avatarUrl: {
       type: String, // link CDN
+      trim: true,
     },
     avatarId: {
       type: String,
+      trim: true,
     },
     bio: {
       type: String,
+      trim: true,
       maxlength: 500,
     },
     phone: {
       type: String,
+      trim: true,
     },
   },
   { timestamps: true },
