@@ -21,7 +21,7 @@ export const sendDirectMessage = async (req, res) => {
     if (!normalizedContent && !normalizedImgUrl) {
       return res
         .status(400)
-        .json({ message: "Noi dung tin nhan hoac hinh anh la bat buoc." });
+        .json({ message: "Nội dung tin nhắn hoặc hình ảnh là bắt buộc." });
     }
 
     let conversation;
@@ -30,7 +30,7 @@ export const sendDirectMessage = async (req, res) => {
       if (!isValidObjectId(conversationId)) {
         return res
           .status(400)
-          .json({ message: "Id cuoc tro chuyen khong hop le." });
+          .json({ message: "Id cuộc trò chuyện không hợp lệ." });
       }
 
       conversation = await Conversation.findById(conversationId);
@@ -38,27 +38,27 @@ export const sendDirectMessage = async (req, res) => {
       if (!conversation) {
         return res
           .status(404)
-          .json({ message: "Khong tim thay cuoc tro chuyen." });
+          .json({ message: "Không tìm thấy cuộc trò chuyện." });
       }
 
       if (conversation.type !== "direct") {
         return res.status(400).json({
-          message: "Cuoc tro chuyen nay khong phai cuoc tro chuyen truc tiep.",
+          message: "Cuộc trò chuyện này không phải cuộc trò chuyện trực tiếp.",
         });
       }
 
       const isParticipant = conversation.participants.some(
-        (participant) => participant.userId.toString() === senderId.toString(),
+        (p) => p.userId.toString() === senderId.toString(),
       );
 
       if (!isParticipant) {
-        return res.status(403).json({
-          message: "Ban khong thuoc cuoc tro chuyen nay.",
-        });
+        return res
+          .status(403)
+          .json({ message: "Bạn không thuộc cuộc trò chuyện này." });
       }
     } else {
       if (!isValidObjectId(recipientId)) {
-        return res.status(400).json({ message: "Id nguoi nhan khong hop le." });
+        return res.status(400).json({ message: "Id người nhận không hợp lệ." });
       }
 
       conversation = await findOrCreateDirectConversation({
@@ -75,48 +75,44 @@ export const sendDirectMessage = async (req, res) => {
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
-
     await conversation.save();
-
     emitNewMessage(io, conversation, message);
 
     return res.status(201).json({ message });
   } catch (error) {
-    console.error("Loi khi gui tin nhan truc tiep", error);
-    return res.status(500).json({ message: "Loi he thong." });
+    console.error("Lỗi khi gửi tin nhắn trực tiếp", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
 
 export const sendGroupMessage = async (req, res) => {
   try {
-    const { conversationId, content, imgUrl } = req.body;
+    const { content, imgUrl } = req.body;
     const senderId = req.user._id;
-    const conversation = req.conversation;
+    const conversation = req.conversation; // set bởi checkGroupMembership middleware
     const normalizedContent = normalizeMessageField(content);
     const normalizedImgUrl = normalizeMessageField(imgUrl);
 
     if (!normalizedContent && !normalizedImgUrl) {
       return res
         .status(400)
-        .json({ message: "Noi dung tin nhan hoac hinh anh la bat buoc." });
+        .json({ message: "Nội dung tin nhắn hoặc hình ảnh là bắt buộc." });
     }
 
     const message = await Message.create({
-      conversationId,
+      conversationId: conversation._id,
       senderId,
       content: normalizedContent || undefined,
       imgUrl: normalizedImgUrl || undefined,
     });
 
     updateConversationAfterCreateMessage(conversation, message, senderId);
-
     await conversation.save();
-
     emitNewMessage(io, conversation, message);
 
     return res.status(201).json({ message });
   } catch (error) {
-    console.error("Loi khi gui tin nhan nhom", error);
-    return res.status(500).json({ message: "Loi he thong." });
+    console.error("Lỗi khi gửi tin nhắn nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
