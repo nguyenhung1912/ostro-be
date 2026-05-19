@@ -157,6 +157,40 @@ export const declineFriendRequest = async (req, res) => {
   }
 };
 
+export const cancelFriendRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(requestId)) {
+      return res
+        .status(400)
+        .json({ message: "Id lời mời kết bạn không hợp lệ" });
+    }
+
+    const request = await FriendRequest.findById(requestId);
+
+    if (!request) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy lời mời kết bạn" });
+    }
+
+    if (request.from.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền hủy lời mời này" });
+    }
+
+    await FriendRequest.findByIdAndDelete(requestId);
+
+    return res.sendStatus(204);
+  } catch (error) {
+    console.error("Lỗi khi hủy lời mời kết bạn", error);
+    return res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
 export const getAllFriends = async (req, res) => {
   try {
     const userId = req.user._id;
