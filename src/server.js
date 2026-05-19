@@ -76,6 +76,19 @@ const startServer = async () => {
   process.on("SIGINT", shutdown);
 };
 
+app.use((err, req, res, _next) => {
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return res
+      .status(400)
+      .json({ message: "File quá lớn. Giới hạn tối đa là 1MB." });
+  }
+  if (err?.code === "LIMIT_UNEXPECTED_FILE") {
+    return res.status(400).json({ message: "Trường file không hợp lệ." });
+  }
+  console.error("Lỗi không xử lý được:", err);
+  return res.status(500).json({ message: "Lỗi hệ thống." });
+});
+
 startServer().catch((err) => {
   console.error("Không thể khởi động server:", err);
   process.exit(1);
