@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    coverUrl: {
+      type: String,
+      trim: true,
+    },
+    coverId: {
+      type: String,
+      trim: true,
+    },
     bio: {
       type: String,
       trim: true,
