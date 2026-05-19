@@ -14,6 +14,7 @@ const formatParticipants = (participants = []) =>
   participants.map((p) => ({
     _id: p.userId?._id,
     displayName: p.userId?.displayName,
+    nickname: p.nickname,
     avatarUrl: p.userId?.avatarUrl ?? null,
     joinedAt: p.joinedAt,
   }));
@@ -302,6 +303,116 @@ export const markAsSeen = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi đánh dấu đã đọc", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
+  }
+};
+
+export const deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(conversationId)) {
+      return res
+        .status(400)
+        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      "participants.userId": userId,
+    });
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy cuộc trò chuyện." });
+    }
+
+    // Remove user from participants
+    conversation.participants = conversation.participants.filter(
+      (p) => p.userId.toString() !== userId.toString(),
+    );
+
+    if (conversation.participants.length === 0) {
+      // Hard delete if empty
+      await Conversation.findByIdAndDelete(conversationId);
+      await Message.deleteMany({ conversationId });
+    } else {
+      await conversation.save();
+    }
+
+    // Notify the user via socket so their other devices update
+    io.to(userId.toString()).emit("delete-conversation", { conversationId });
+
+    return res.status(200).json({ message: "Đã xóa cuộc trò chuyện." });
+  } catch (error) {
+    console.error("Lỗi khi xóa cuộc trò chuyện", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
+  }
+};
+
+export const renameConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { name } = req.body;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(conversationId)) {
+      return res
+        .status(400)
+        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
+    }
+
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ message: "Tên không hợp lệ." });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      "participants.userId": userId,
+    });
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy cuộc trò chuyện." });
+    }
+
+    if (conversation.type === "group") {
+      conversation.group.name = name.trim();
+    } else {
+      // Direct chat: set nickname for the OTHER user
+      const otherParticipant = conversation.participants.find(
+        (p) => p.userId.toString() !== userId.toString(),
+      );
+      if (otherParticipant) {
+        otherParticipant.nickname = name.trim();
+      }
+    }
+
+    await conversation.save();
+
+    await conversation.populate([
+      { path: "participants.userId", select: "displayName avatarUrl" },
+      { path: "seenBy", select: "displayName avatarUrl" },
+      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
+    ]);
+
+    const formatted = {
+      ...conversation.toObject(),
+      participants: formatParticipants(conversation.participants),
+    };
+
+    // Notify all participants about the rename
+    conversation.participants.forEach((p) => {
+      io.to(p.userId._id ? p.userId._id.toString() : p.userId.toString()).emit(
+        "rename-conversation",
+        { conversation: formatted },
+      );
+    });
+
+    return res.status(200).json({ conversation: formatted });
+  } catch (error) {
+    console.error("Lỗi khi đổi tên cuộc trò chuyện", error);
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
