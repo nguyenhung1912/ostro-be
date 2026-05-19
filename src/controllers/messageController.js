@@ -5,11 +5,53 @@ import {
   emitNewMessage,
   updateConversationAfterCreateMessage,
 } from "../utils/messageHelper.js";
+import { uploadImageFromBuffer } from "../middlewares/uploadMiddleware.js";
 import { isValidObjectId } from "../utils/validation.js";
 import { io } from "../socket/index.js";
 
 const normalizeMessageField = (value) =>
   typeof value === "string" ? value.trim() : "";
+
+const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+export const uploadMessageImage = async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res
+        .status(400)
+        .json({ message: "Không có file nào được tải lên." });
+    }
+
+    if (!allowedImageTypes.has(file.mimetype)) {
+      return res
+        .status(400)
+        .json({ message: "Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP." });
+    }
+
+    const result = await uploadImageFromBuffer(file.buffer, {
+      folder: "ostro_chat/messages",
+      transformation: [
+        {
+          width: 1200,
+          height: 1200,
+          crop: "limit",
+          quality: "auto",
+          fetch_format: "auto",
+        },
+      ],
+    });
+
+    return res.status(201).json({
+      imgUrl: result.secure_url,
+      imageId: result.public_id,
+    });
+  } catch (error) {
+    console.error("Lỗi khi tải lên ảnh tin nhắn", error);
+    return res.status(500).json({ message: "Tải ảnh tin nhắn thất bại." });
+  }
+};
 
 export const sendDirectMessage = async (req, res) => {
   try {
@@ -113,6 +155,65 @@ export const sendGroupMessage = async (req, res) => {
     return res.status(201).json({ message });
   } catch (error) {
     console.error("Lỗi khi gửi tin nhắn nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
+  }
+};
+
+export const recallMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(messageId)) {
+      return res.status(400).json({ message: "Id tin nhắn không hợp lệ." });
+    }
+
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ message: "Không tìm thấy tin nhắn." });
+    }
+
+    if (message.senderId.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Bạn chỉ có thể thu hồi tin nhắn của mình." });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: message.conversationId,
+      "participants.userId": userId,
+    });
+
+    if (!conversation) {
+      return res
+        .status(403)
+        .json({ message: "Bạn không thuộc cuộc trò chuyện này." });
+    }
+
+    if (!message.isDeleted) {
+      message.isDeleted = true;
+      message.deletedAt = new Date();
+      message.deletedBy = userId;
+      await message.save();
+    }
+
+    if (conversation.lastMessage?._id?.toString() === message._id.toString()) {
+      conversation.lastMessage.content = "Tin nhắn đã bị thu hồi";
+      await conversation.save();
+    }
+
+    io.to(message.conversationId.toString()).emit("message-recalled", {
+      messageId: message._id,
+      conversationId: message.conversationId,
+      deletedAt: message.deletedAt,
+      deletedBy: userId,
+      lastMessage: conversation.lastMessage,
+    });
+
+    return res.status(200).json({ message });
+  } catch (error) {
+    console.error("Lỗi khi thu hồi tin nhắn", error);
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
