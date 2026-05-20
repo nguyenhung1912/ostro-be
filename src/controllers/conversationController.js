@@ -416,3 +416,95 @@ export const renameConversation = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
+
+export const addGroupMembers = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { memberIds } = req.body;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(conversationId)) {
+      return res
+        .status(400)
+        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
+    }
+
+    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(400).json({
+        message: "Danh sách thành viên cần thêm là bắt buộc.",
+      });
+    }
+
+    if (!areValidObjectIds(memberIds)) {
+      return res
+        .status(400)
+        .json({ message: "Danh sách thành viên không hợp lệ." });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      type: "group",
+      "participants.userId": userId,
+    });
+
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({
+          message:
+            "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
+        });
+    }
+
+    const existingUserIds = new Set(
+      conversation.participants.map((p) => p.userId.toString()),
+    );
+
+    const newMemberIds = memberIds.filter(
+      (id) => !existingUserIds.has(id.toString()),
+    );
+
+    if (newMemberIds.length === 0) {
+      return res.status(400).json({
+        message: "Tất cả người dùng được chọn đã là thành viên của nhóm.",
+      });
+    }
+
+    const now = new Date();
+    newMemberIds.forEach((id) => {
+      conversation.participants.push({ userId: id, joinedAt: now });
+    });
+
+    await conversation.save();
+
+    await conversation.populate([
+      { path: "participants.userId", select: "displayName avatarUrl" },
+      { path: "seenBy", select: "displayName avatarUrl" },
+      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
+    ]);
+
+    const formatted = {
+      ...conversation.toObject(),
+      unreadCounts: conversation.unreadCounts
+        ? Object.fromEntries(conversation.unreadCounts)
+        : {},
+      participants: formatParticipants(conversation.participants),
+    };
+
+    // Emit event to all new members to let them join the socket room and add the conversation to their list
+    newMemberIds.forEach((memberId) => {
+      io.to(memberId.toString()).emit("new-group", formatted);
+    });
+
+    // Emit update event to existing members
+    conversation.participants.forEach((p) => {
+      const pid = p.userId._id ? p.userId._id.toString() : p.userId.toString();
+      io.to(pid).emit("rename-conversation", { conversation: formatted });
+    });
+
+    return res.status(200).json({ conversation: formatted });
+  } catch (error) {
+    console.error("Lỗi khi thêm thành viên vào nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
+  }
+};
