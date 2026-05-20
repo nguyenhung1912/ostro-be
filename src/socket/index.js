@@ -23,8 +23,6 @@ io.on("connection", async (socket) => {
   const user = socket.user;
   const userIdStr = user._id.toString();
 
-  console.log(`${user.displayName} online với socket ${socket.id}`);
-
   if (!onlineUsers.has(userIdStr)) {
     onlineUsers.set(userIdStr, new Set());
   }
