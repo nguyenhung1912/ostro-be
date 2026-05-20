@@ -14,7 +14,7 @@ export const uploadImageFromBuffer = (buffer, options) => {
       {
         folder: "ostro_chat/avatars",
         resource_type: "image",
-        transformation: [{ with: 200, height: 200, crop: "fill" }],
+        transformation: [{ width: 200, height: 200, crop: "fill" }],
         ...options,
       },
       (error, result) => {

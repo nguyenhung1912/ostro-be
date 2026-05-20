@@ -11,24 +11,26 @@ export const checkFriendship = async (req, res, next) => {
     const recipientId = req.body?.recipientId ?? null;
     const memberIds = req.body?.memberIds ?? [];
 
+    // Đã có conversationId (message tới conversation cũ), không cần kiểm tra friendship
     if (conversationId && !recipientId && memberIds.length === 0) {
       return next();
     }
 
     if (!recipientId && memberIds.length === 0) {
       return res.status(400).json({
-        message: "Can cung cap recipientId hoac memberIds.",
+        message: "Cần cung cấp recipientId hoặc memberIds.",
       });
     }
 
+    // Kiểm tra friendship với 1 người
     if (recipientId) {
       if (!isValidObjectId(recipientId)) {
-        return res.status(400).json({ message: "Id nguoi nhan khong hop le." });
+        return res.status(400).json({ message: "Id người nhận không hợp lệ." });
       }
 
       if (recipientId === me) {
         return res.status(400).json({
-          message: "Khong the thao tac voi chinh minh.",
+          message: "Không thể thao tác với chính mình.",
         });
       }
 
@@ -37,43 +39,45 @@ export const checkFriendship = async (req, res, next) => {
 
       if (!isFriend) {
         return res.status(403).json({
-          message: "Ban chua ket ban voi nguoi dung nay.",
+          message: "Bạn chưa kết bạn với người dùng này.",
         });
       }
 
       return next();
     }
 
-    if (!memberIds.every((memberId) => isValidObjectId(memberId))) {
-      return res.status(400).json({ message: "Danh sach thanh vien khong hop le." });
+    // Kiểm tra friendship với nhiều người (tạo nhóm)
+    if (!memberIds.every((id) => isValidObjectId(id))) {
+      return res
+        .status(400)
+        .json({ message: "Danh sách thành viên không hợp lệ." });
     }
 
-    if (memberIds.some((memberId) => memberId === me)) {
+    if (memberIds.some((id) => id === me)) {
       return res.status(400).json({
-        message: "Khong the them chinh minh vao danh sach thanh vien.",
+        message: "Không thể thêm chính mình vào danh sách thành viên.",
       });
     }
 
     const friendshipChecks = memberIds.map(async (memberId) => {
       const [userA, userB] = pair(me, memberId);
-      const friendship = await Friend.exists({ userA, userB });
-      return friendship ? null : memberId;
+      const exists = await Friend.exists({ userA, userB });
+      return exists ? null : memberId;
     });
 
-    const results = await Promise.all(friendshipChecks);
-    const notFriends = results.filter(Boolean);
+    const notFriends = (await Promise.all(friendshipChecks)).filter(Boolean);
 
     if (notFriends.length > 0) {
       return res.status(403).json({
-        message: "Ban chi co the them ban be vao nhom.",
+        message: "Bạn chỉ có thể thêm bạn bè vào nhóm.",
         notFriends,
       });
     }
 
     return next();
   } catch (error) {
-    console.error("Loi khi kiem tra quan he ban be", error);
-    return res.status(500).json({ message: "Loi he thong." });
+    console.error("Lỗi khi kiểm tra quan hệ bạn bè", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
 
@@ -83,35 +87,39 @@ export const checkGroupMembership = async (req, res, next) => {
     const userId = req.user._id;
 
     if (!isValidObjectId(conversationId)) {
-      return res.status(400).json({ message: "Id cuoc tro chuyen khong hop le." });
+      return res
+        .status(400)
+        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
     }
 
     const conversation = await Conversation.findById(conversationId);
 
     if (!conversation) {
-      return res.status(404).json({ message: "Khong tim thay cuoc tro chuyen." });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy cuộc trò chuyện." });
     }
 
     if (conversation.type !== "group") {
       return res.status(400).json({
-        message: "Cuoc tro chuyen nay khong phai nhom.",
+        message: "Cuộc trò chuyện này không phải nhóm.",
       });
     }
 
     const isMember = conversation.participants.some(
-      (participant) => participant.userId.toString() === userId.toString(),
+      (p) => p.userId.toString() === userId.toString(),
     );
 
     if (!isMember) {
       return res.status(403).json({
-        message: "Ban khong thuoc nhom tro chuyen nay.",
+        message: "Bạn không thuộc nhóm trò chuyện này.",
       });
     }
 
     req.conversation = conversation;
     return next();
   } catch (error) {
-    console.error("Loi khi kiem tra thanh vien nhom", error);
-    return res.status(500).json({ message: "Loi he thong." });
+    console.error("Lỗi khi kiểm tra thành viên nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };

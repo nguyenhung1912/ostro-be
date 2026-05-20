@@ -1,7 +1,6 @@
 import { Server } from "socket.io";
 import http from "http";
 import express from "express";
-import { log } from "console";
 import { socketAuthMiddleware } from "../middlewares/socketMiddleware.js";
 import { getUserConversationsForSocketIO } from "../controllers/conversationController.js";
 
@@ -18,14 +17,18 @@ const io = new Server(server, {
 
 io.use(socketAuthMiddleware);
 
-const onlineUsers = new Map(); // {userId: socketId}
+const onlineUsers = new Map(); // {userId: Set<socketId>}
 
 io.on("connection", async (socket) => {
   const user = socket.user;
+  const userIdStr = user._id.toString();
 
   console.log(`${user.displayName} online với socket ${socket.id}`);
 
-  onlineUsers.set(user._id, socket.id);
+  if (!onlineUsers.has(userIdStr)) {
+    onlineUsers.set(userIdStr, new Set());
+  }
+  onlineUsers.get(userIdStr).add(socket.id);
 
   io.emit("online-users", Array.from(onlineUsers.keys()));
 
@@ -38,11 +41,18 @@ io.on("connection", async (socket) => {
     socket.join(conversationId);
   });
 
-  socket.join(user._id.toString());
+  socket.join(userIdStr);
 
   socket.on("disconnect", () => {
-    onlineUsers.delete(user._id);
-    io.emit("online-users", Array.from(onlineUsers.keys()));
+    if (onlineUsers.has(userIdStr)) {
+      const userSockets = onlineUsers.get(userIdStr);
+      userSockets.delete(socket.id);
+
+      if (userSockets.size === 0) {
+        onlineUsers.delete(userIdStr);
+        io.emit("online-users", Array.from(onlineUsers.keys()));
+      }
+    }
   });
 });
 

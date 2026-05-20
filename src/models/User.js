@@ -11,8 +11,15 @@ const userSchema = new mongoose.Schema(
     },
     hashedPassword: {
       type: String,
-      required: true,
+      required: function () {
+        return !this.googleId;
+      },
       select: false,
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
     email: {
       type: String,
@@ -28,16 +35,28 @@ const userSchema = new mongoose.Schema(
     },
     avatarUrl: {
       type: String, // link CDN
+      trim: true,
     },
     avatarId: {
       type: String,
+      trim: true,
+    },
+    coverUrl: {
+      type: String,
+      trim: true,
+    },
+    coverId: {
+      type: String,
+      trim: true,
     },
     bio: {
       type: String,
+      trim: true,
       maxlength: 500,
     },
     phone: {
       type: String,
+      trim: true,
     },
   },
   { timestamps: true },

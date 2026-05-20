@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import Session from "../models/Session.js";
+import { OAuth2Client } from "google-auth-library";
 
 const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000; // 14 ngày
@@ -20,12 +21,26 @@ const normalizeString = (value) =>
 const normalizeUsername = (username) => normalizeString(username).toLowerCase();
 const normalizeEmail = (email) => normalizeString(email).toLowerCase();
 
-const getAccessTokenSecret = () => {
-  if (!process.env.ACCESS_TOKEN_SECRET) {
-    throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
-  }
+const generateUniqueUsername = async (email) => {
+  const base = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  let username = base || "user";
+  let counter = 1;
 
-  return process.env.ACCESS_TOKEN_SECRET;
+  while (await User.findOne({ username })) {
+    username = `${base}${counter}`;
+    counter++;
+  }
+  return username;
+};
+
+const getAccessTokenSecret = () => {
+  const secret = process.env.ACCESS_TOKEN_SECRET;
+  if (!secret)
+    throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
+  return secret;
 };
 
 const createAccessToken = (userId) =>
@@ -198,6 +213,84 @@ export const signIn = async (req, res) => {
   }
 };
 
+export const googleSignIn = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: "Thiếu token Google" });
+    }
+
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res
+        .status(401)
+        .json({ message: "Token Google không hợp lệ hoặc thiếu email" });
+    }
+
+    const { email, sub: googleId, name, picture } = payload;
+    const normalizedEmail = normalizeEmail(email);
+
+    let user = await User.findOne({
+      $or: [{ googleId }, { email: normalizedEmail }],
+    });
+
+    if (user) {
+      // Account exists. If emails match but missing googleId, link it.
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
+    } else {
+      // New user
+      const username = await generateUniqueUsername(normalizedEmail);
+      user = await User.create({
+        username,
+        email: normalizedEmail,
+        displayName: name || username,
+        googleId,
+        avatarUrl: picture,
+      });
+    }
+
+    // tạo access token
+    const accessToken = createAccessToken(user._id);
+
+    // tạo refresh token
+    const refreshToken = crypto.randomBytes(64).toString("hex");
+    const refreshTokenHash = hashRefreshToken(refreshToken);
+
+    // lưu session
+    await Session.create({
+      userId: user._id,
+      refreshToken: refreshTokenHash,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
+    });
+
+    // trả refresh token qua cookie
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+      ...REFRESH_COOKIE_OPTIONS,
+      maxAge: REFRESH_TOKEN_TTL,
+    });
+
+    // trả access token
+    return res.status(200).json({
+      message: `Đăng nhập thành công! Xin chào ${user.displayName}`,
+      accessToken,
+    });
+  } catch (err) {
+    console.error("Lỗi khi đăng nhập bằng Google", err);
+    return res
+      .status(500)
+      .json({ message: "Lỗi xác thực Google. Vui lòng thử lại sau." });
+  }
+};
+
 export const signOut = async (req, res) => {
   try {
     const token = req.cookies?.[REFRESH_COOKIE_NAME];
@@ -223,19 +316,13 @@ export const refreshToken = async (req, res) => {
       return res.status(401).json({ message: "Token không tồn tại" });
     }
 
-    // kiểm tra refresh token trong DB
+    // kiểm tra refresh token trong DB (TTL index tự động xóa session hết hạn)
     const session = await findSessionByRefreshToken(token);
 
     if (!session) {
       return res
         .status(403)
         .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
-    }
-
-    // kiểm tra hạn
-    if (session.expiresAt < new Date()) {
-      await Session.deleteOne({ _id: session._id });
-      return res.status(403).json({ message: "Token đã hết hạn" });
     }
 
     // tạo access token mới

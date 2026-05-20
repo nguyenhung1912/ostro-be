@@ -20,6 +20,11 @@ const participantSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    nickname: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     joinedAt: {
       type: Date,
       default: Date.now,
