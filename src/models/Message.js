@@ -21,6 +21,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    isSystem: {
+      type: Boolean,
+      default: false,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

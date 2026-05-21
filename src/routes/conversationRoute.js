@@ -9,6 +9,7 @@ import {
   addGroupMembers,
 } from "../controllers/conversationController.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
+import { leaveGroup } from "../controllers/groupConversationController.js";
 
 const router = express.Router();
 
@@ -19,5 +20,6 @@ router.patch("/:conversationId/seen", markAsSeen);
 router.delete("/:conversationId", deleteConversation);
 router.patch("/:conversationId/rename", renameConversation);
 router.patch("/:conversationId/add-members", checkFriendship, addGroupMembers);
+router.post("/:conversationId/leave", leaveGroup);
 
 export default router;
