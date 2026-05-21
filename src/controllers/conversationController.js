@@ -1,16 +1,14 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
-import {
-  findOrCreateDirectConversation,
-  markConversationAsRead,
-} from "../utils/conversationHelper.js";
-import { isValidObjectId, areValidObjectIds } from "../utils/validation.js";
+import { markConversationAsRead } from "../utils/conversationHelper.js";
+import { isValidObjectId } from "../utils/validation.js";
 import { io } from "../socket/index.js";
+import { createDirectConversation } from "./directConversationController.js";
+import { createGroupConversation } from "./groupConversationController.js";
 
 const MAX_MESSAGE_LIMIT = 100;
 
-// Shared helper: flatten populated participants array
-const formatParticipants = (participants = []) =>
+export const formatParticipants = (participants = []) =>
   participants.map((p) => ({
     _id: p.userId?._id,
     displayName: p.userId?.displayName,
@@ -20,105 +18,12 @@ const formatParticipants = (participants = []) =>
   }));
 
 export const createConversation = async (req, res) => {
-  try {
-    const { type, name, memberIds } = req.body;
-    const userId = req.user._id;
-    const normalizedName = typeof name === "string" ? name.trim() : "";
-
-    if (
-      !type ||
-      !memberIds ||
-      !Array.isArray(memberIds) ||
-      memberIds.length === 0
-    ) {
-      return res.status(400).json({
-        message: "Loại cuộc trò chuyện và danh sách thành viên là bắt buộc.",
-      });
-    }
-
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
-
-    const normalizedMemberIds = memberIds.map((id) => id.toString());
-    const uniqueMemberIds = [...new Set(normalizedMemberIds)];
-
-    if (uniqueMemberIds.length !== normalizedMemberIds.length) {
-      return res.status(400).json({
-        message: "Danh sách thành viên không được trùng lặp.",
-      });
-    }
-
-    let conversation;
-
-    if (type === "direct") {
-      if (uniqueMemberIds.length !== 1) {
-        return res.status(400).json({
-          message: "Cuộc trò chuyện trực tiếp chỉ được phép có một người nhận.",
-        });
-      }
-
-      if (uniqueMemberIds[0] === userId.toString()) {
-        return res.status(400).json({
-          message: "Không thể tạo cuộc trò chuyện trực tiếp với chính mình.",
-        });
-      }
-
-      conversation = await findOrCreateDirectConversation({
-        userId,
-        otherUserId: uniqueMemberIds[0],
-      });
-    }
-
-    if (type === "group") {
-      if (!normalizedName) {
-        return res.status(400).json({ message: "Tên nhóm là bắt buộc." });
-      }
-
-      const now = new Date();
-      conversation = new Conversation({
-        type: "group",
-        participants: [
-          { userId, joinedAt: now },
-          ...uniqueMemberIds.map((id) => ({ userId: id, joinedAt: now })),
-        ],
-        group: { name: normalizedName, createdBy: userId },
-        lastMessageAt: now,
-      });
-
-      await conversation.save();
-    }
-
-    if (!conversation) {
-      return res
-        .status(400)
-        .json({ message: "Loại cuộc trò chuyện không hợp lệ." });
-    }
-
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
-
-    const formatted = {
-      ...conversation.toObject(),
-      participants: formatParticipants(conversation.participants),
-    };
-
-    if (type === "group") {
-      uniqueMemberIds.forEach((memberId) => {
-        io.to(memberId).emit("new-group", formatted);
-      });
-    }
-
-    return res.status(201).json({ conversation: formatted });
-  } catch (error) {
-    console.error("Lỗi khi tạo cuộc trò chuyện", error);
-    return res.status(500).json({ message: "Lỗi hệ thống." });
-  }
+  const { type } = req.body;
+  if (type === "direct") return createDirectConversation(req, res);
+  if (type === "group") return createGroupConversation(req, res);
+  return res
+    .status(400)
+    .json({ message: "Loại cuộc trò chuyện không hợp lệ." });
 };
 
 export const getConversations = async (req, res) => {
@@ -179,22 +84,22 @@ export const getMessages = async (req, res) => {
     });
 
     if (!hasAccess) {
-      return res.status(403).json({
-        message: "Bạn không có quyền xem tin nhắn của cuộc trò chuyện này.",
-      });
+      return res
+        .status(403)
+        .json({
+          message: "Bạn không có quyền xem tin nhắn của cuộc trò chuyện này.",
+        });
     }
 
     const query = { conversationId };
 
     if (cursor) {
       const parsedCursor = new Date(cursor);
-
       if (Number.isNaN(parsedCursor.getTime())) {
         return res
           .status(400)
           .json({ message: "Con trỏ phân trang không hợp lệ." });
       }
-
       query.createdAt = { $lt: parsedCursor };
     }
 
@@ -328,20 +233,17 @@ export const deleteConversation = async (req, res) => {
         .json({ message: "Không tìm thấy cuộc trò chuyện." });
     }
 
-    // Remove user from participants
     conversation.participants = conversation.participants.filter(
       (p) => p.userId.toString() !== userId.toString(),
     );
 
     if (conversation.participants.length === 0) {
-      // Hard delete if empty
       await Conversation.findByIdAndDelete(conversationId);
       await Message.deleteMany({ conversationId });
     } else {
       await conversation.save();
     }
 
-    // Notify the user via socket so their other devices update
     io.to(userId.toString()).emit("delete-conversation", { conversationId });
 
     return res.status(200).json({ message: "Đã xóa cuộc trò chuyện." });
@@ -380,7 +282,6 @@ export const renameConversation = async (req, res) => {
     if (conversation.type === "group") {
       conversation.group.name = name.trim();
     } else {
-      // Direct chat: set nickname for the OTHER user
       const otherParticipant = conversation.participants.find(
         (p) => p.userId.toString() !== userId.toString(),
       );
@@ -402,7 +303,6 @@ export const renameConversation = async (req, res) => {
       participants: formatParticipants(conversation.participants),
     };
 
-    // Notify all participants about the rename
     conversation.participants.forEach((p) => {
       io.to(p.userId._id ? p.userId._id.toString() : p.userId.toString()).emit(
         "rename-conversation",
@@ -417,94 +317,4 @@ export const renameConversation = async (req, res) => {
   }
 };
 
-export const addGroupMembers = async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const { memberIds } = req.body;
-    const userId = req.user._id;
-
-    if (!isValidObjectId(conversationId)) {
-      return res
-        .status(400)
-        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
-    }
-
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-      return res.status(400).json({
-        message: "Danh sách thành viên cần thêm là bắt buộc.",
-      });
-    }
-
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
-
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      type: "group",
-      "participants.userId": userId,
-    });
-
-    if (!conversation) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
-        });
-    }
-
-    const existingUserIds = new Set(
-      conversation.participants.map((p) => p.userId.toString()),
-    );
-
-    const newMemberIds = memberIds.filter(
-      (id) => !existingUserIds.has(id.toString()),
-    );
-
-    if (newMemberIds.length === 0) {
-      return res.status(400).json({
-        message: "Tất cả người dùng được chọn đã là thành viên của nhóm.",
-      });
-    }
-
-    const now = new Date();
-    newMemberIds.forEach((id) => {
-      conversation.participants.push({ userId: id, joinedAt: now });
-    });
-
-    await conversation.save();
-
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
-
-    const formatted = {
-      ...conversation.toObject(),
-      unreadCounts: conversation.unreadCounts
-        ? Object.fromEntries(conversation.unreadCounts)
-        : {},
-      participants: formatParticipants(conversation.participants),
-    };
-
-    // Emit event to all new members to let them join the socket room and add the conversation to their list
-    newMemberIds.forEach((memberId) => {
-      io.to(memberId.toString()).emit("new-group", formatted);
-    });
-
-    // Emit update event to existing members
-    conversation.participants.forEach((p) => {
-      const pid = p.userId._id ? p.userId._id.toString() : p.userId.toString();
-      io.to(pid).emit("rename-conversation", { conversation: formatted });
-    });
-
-    return res.status(200).json({ conversation: formatted });
-  } catch (error) {
-    console.error("Lỗi khi thêm thành viên vào nhóm", error);
-    return res.status(500).json({ message: "Lỗi hệ thống." });
-  }
-};
+export { addGroupMembers } from "./groupConversationController.js";
