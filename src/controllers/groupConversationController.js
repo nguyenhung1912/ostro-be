@@ -1,4 +1,5 @@
 import Conversation from "../models/Conversation.js";
+import Message from "../models/Message.js";
 import { io } from "../socket/index.js";
 import { areValidObjectIds, isValidObjectId } from "../utils/validation.js";
 import { formatParticipants } from "./conversationController.js";
@@ -100,12 +101,10 @@ export const addGroupMembers = async (req, res) => {
     });
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
-        });
+      return res.status(404).json({
+        message:
+          "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
+      });
     }
 
     const existingUserIds = new Set(
@@ -116,11 +115,9 @@ export const addGroupMembers = async (req, res) => {
     );
 
     if (newMemberIds.length === 0) {
-      return res
-        .status(400)
-        .json({
-          message: "Tất cả người dùng được chọn đã là thành viên của nhóm.",
-        });
+      return res.status(400).json({
+        message: "Tất cả người dùng được chọn đã là thành viên của nhóm.",
+      });
     }
 
     const now = new Date();
@@ -156,6 +153,73 @@ export const addGroupMembers = async (req, res) => {
     return res.status(200).json({ conversation: formatted });
   } catch (error) {
     console.error("Lỗi khi thêm thành viên vào nhóm", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
+  }
+};
+
+export const leaveGroup = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(conversationId)) {
+      return res
+        .status(400)
+        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      type: "group",
+      "participants.userId": userId,
+    });
+
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({
+          message:
+            "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
+        });
+    }
+
+    if (conversation.group.createdBy.toString() === userId.toString()) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Trưởng nhóm không thể rời nhóm, vui lòng chuyển quyền hoặc giải tán nhóm.",
+        });
+    }
+
+    conversation.participants = conversation.participants.filter(
+      (p) => p.userId.toString() !== userId.toString(),
+    );
+
+    // Create system message
+    const systemMessage = new Message({
+      conversationId: conversation._id,
+      senderId: userId,
+      content: `${req.user.displayName || req.user.username} đã rời nhóm.`,
+      isSystem: true,
+    });
+
+    await Promise.all([conversation.save(), systemMessage.save()]);
+
+    await systemMessage.populate("senderId", "displayName avatarUrl");
+
+    // Broadcast to remaining members
+    conversation.participants.forEach((p) => {
+      io.to(p.userId.toString()).emit("new-message", systemMessage);
+      io.to(p.userId.toString()).emit("member-left", {
+        conversationId,
+        userId,
+      });
+    });
+
+    return res.status(200).json({ message: "Đã rời nhóm thành công." });
+  } catch (error) {
+    console.error("Lỗi khi rời nhóm", error);
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
