@@ -60,7 +60,7 @@ export const aiService = {
 
   async improveMessage(draft, tone) {
     const ai = getClient();
-    let tonePrompt = "";
+    let tonePrompt;
     switch (tone) {
       case "professional":
         tonePrompt = "chuyên nghiệp và trang trọng";
