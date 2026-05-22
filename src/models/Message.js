@@ -1,0 +1,58 @@
+import mongoose from "mongoose";
+
+const messageSchema = new mongoose.Schema(
+  {
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Conversation",
+      required: true,
+      index: true,
+    },
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    content: {
+      type: String,
+      trim: true,
+    },
+    imgUrl: {
+      type: String,
+      trim: true,
+    },
+    isSystem: {
+      type: Boolean,
+      default: false,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
+
+// chặn gửi tin nhắn trống
+messageSchema.pre("validate", function () {
+  if (!this.content && !this.imgUrl) {
+    throw new Error("Tin nhắn phải có nội dung hoặc hình ảnh");
+  }
+});
+
+messageSchema.index({ conversationId: 1, createdAt: -1 });
+
+const Message = mongoose.model("Message", messageSchema);
+
+export default Message;

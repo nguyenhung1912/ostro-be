@@ -2,21 +2,45 @@
   "name": "ostro-be",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "prepare": "husky",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
+  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
+    "@google/genai": "^2.4.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.5.0"
+    "google-auth-library": "^10.6.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.5.0",
+    "multer": "^2.1.1",
+    "socket.io": "^4.8.3",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.3"
+  },
+  "lint-staged": {
+    "*.{js,json,md}": [
+      "prettier --write"
+    ]
   }
 }
