@@ -42,7 +42,7 @@
 
 Built with **Node.js**, **Express 5**, and **MongoDB**, the server provides a complete ecosystem for authentication, messaging, media handling, and AI-powered functionality.
 
----
+> 📝 **API Documentation:** Once the server is running, you can access the interactive API docs at [http://localhost:5001/api-docs/#/](http://localhost:5001/api-docs/#/)---
 
 ## ✨ Core Features
 
@@ -340,6 +340,8 @@ See the `LICENSE` file for more information.
 **Ostro Backend** là hệ thống backend mạnh mẽ được thiết kế để hỗ trợ các ứng dụng realtime với khả năng mở rộng cao, bảo mật tốt và dễ bảo trì.
 
 Được xây dựng bằng **Node.js**, **Express 5** và **MongoDB**, hệ thống cung cấp đầy đủ các chức năng từ xác thực người dùng, nhắn tin realtime, xử lý media đến tích hợp AI.
+
+📝 Tài liệu API: Sau khi server khởi chạy, bạn có thể truy cập tài liệu API tại đường dẫn http://localhost:5001/api-docs/#/
 
 ---
 
