@@ -84,11 +84,9 @@ export const getMessages = async (req, res) => {
     });
 
     if (!hasAccess) {
-      return res
-        .status(403)
-        .json({
-          message: "Bạn không có quyền xem tin nhắn của cuộc trò chuyện này.",
-        });
+      return res.status(403).json({
+        message: "Bạn không có quyền xem tin nhắn của cuộc trò chuyện này.",
+      });
     }
 
     const query = { conversationId };
@@ -313,6 +311,47 @@ export const renameConversation = async (req, res) => {
     return res.status(200).json({ conversation: formatted });
   } catch (error) {
     console.error("Lỗi khi đổi tên cuộc trò chuyện", error);
+    return res.status(500).json({ message: "Lỗi hệ thống." });
+  }
+};
+
+export const togglePinConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user._id;
+
+    if (!isValidObjectId(conversationId)) {
+      return res
+        .status(400)
+        .json({ message: "Id cuộc trò chuyện không hợp lệ." });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      "participants.userId": userId,
+    });
+
+    if (!conversation) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy cuộc trò chuyện." });
+    }
+
+    const isPinned = conversation.pinnedBy.includes(userId);
+
+    if (isPinned) {
+      conversation.pinnedBy = conversation.pinnedBy.filter(
+        (id) => id.toString() !== userId.toString(),
+      );
+    } else {
+      conversation.pinnedBy.push(userId);
+    }
+
+    await conversation.save();
+
+    return res.status(200).json({ isPinned: !isPinned });
+  } catch (error) {
+    console.error("Lỗi khi ghim/bỏ ghim cuộc trò chuyện", error);
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
