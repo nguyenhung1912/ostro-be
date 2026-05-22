@@ -2,12 +2,12 @@
 
 🇬🇧 **English** | 🇻🇳 **Tiếng Việt**
 
-## 📖 About / Giới thiệu
+## About / Giới thiệu
 
 **[EN]** Ostro Backend is the robust RESTful API and WebSocket server that powers the Ostro application. Built with Node.js, Express 5, and MongoDB, it provides essential services including user authentication (JWT & Google OAuth), real-time messaging, file uploading to Cloudinary, and AI capabilities powered by Google Gemini.
 **[VN]** Ostro Backend là máy chủ RESTful API và WebSocket mạnh mẽ hỗ trợ ứng dụng Ostro. Được xây dựng bằng Node.js, Express 5 và MongoDB, hệ thống cung cấp các dịch vụ cốt lõi bao gồm xác thực người dùng (JWT & Google OAuth), nhắn tin theo thời gian thực, tải tệp lên Cloudinary và các tính năng AI được hỗ trợ bởi Google Gemini.
 
-## 🚀 Tech Stack / Công nghệ sử dụng
+## Tech Stack / Công nghệ sử dụng
 
 - **Core:** Node.js, Express v5 (ES Modules)
 - **Database:** MongoDB, Mongoose
@@ -17,7 +17,7 @@
 - **AI Integration:** Google GenAI (@google/genai)
 - **Other Tools:** Nodemon, ESLint, Prettier, Husky, Lint-staged
 
-## 📂 Project Structure / Cấu trúc dự án
+## Project Structure / Cấu trúc dự án
 
 ```text
 ostro-be/
@@ -33,7 +33,7 @@ ostro-be/
 │   └── server.js     # Application entry point / Điểm khởi đầu của ứng dụng
 ```
 
-## 🛠️ Getting Started / Hướng dẫn cài đặt
+## Getting Started / Hướng dẫn cài đặt
 
 ### Prerequisites / Yêu cầu hệ thống
 
@@ -79,14 +79,14 @@ pnpm run dev
 **[EN]** The server will start via Nodemon and automatically reload on code changes.
 **[VN]** Server sẽ khởi chạy qua Nodemon và tự động tải lại khi có thay đổi trong code.
 
-## 📜 Scripts / Các lệnh có sẵn
+## Scripts / Các lệnh có sẵn
 
 - `pnpm dev`: Start the server in development mode using Nodemon / Khởi chạy server ở chế độ dev bằng Nodemon.
 - `pnpm start`: Start the server in production mode / Khởi chạy server ở chế độ production.
 - `pnpm lint`: Run ESLint to identify issues / Chạy ESLint để phát hiện lỗi.
 - `pnpm lint:fix`: Automatically fix ESLint issues / Tự động sửa lỗi ESLint.
 
-## 🤝 Contributing / Đóng góp
+## Contributing / Đóng góp
 
 **[EN]** Ensure you run formatters and linters before submitting a PR. Code must pass all ESLint and Prettier checks.
 **[VN]** Đảm bảo bạn đã chạy các công cụ format và linter trước khi gửi PR. Code phải vượt qua các kiểm tra của ESLint và Prettier.
