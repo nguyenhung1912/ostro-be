@@ -14,6 +14,10 @@ import {
   hashRefreshToken,
   findSessionByRefreshToken,
 } from "../services/authService.js";
+import {
+  isStrongPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from "../utils/passwordPolicy.js";
 
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE_NAME = "refreshToken";
@@ -43,6 +47,10 @@ export const signUp = async (req, res) => {
       return res.status(400).json({
         message: "Tên đăng nhập, mật khẩu, email, họ và tên là bắt buộc",
       });
+    }
+
+    if (!isStrongPassword(normalizedPassword)) {
+      return res.status(400).json({ message: PASSWORD_POLICY_MESSAGE });
     }
 
     const duplicate = await User.findOne({
