@@ -8,7 +8,8 @@ import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import aiRoute from "./routes/aiRoute.js";
-import { protectedRoute } from "./middlewares/authMiddleware.js";
+import { protectedRoute, adminOnly } from "./middlewares/authMiddleware.js";
+import adminRoute from "./routes/adminRoute.js";
 import cors from "cors";
 import { app, server } from "./socket/index.js";
 import { v2 as cloudinary } from "cloudinary";
@@ -67,6 +68,7 @@ app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
 app.use("/api/ai", aiRoute);
+app.use("/api/admin", adminOnly, adminRoute);
 
 // graceful shutdown
 const startServer = async () => {
