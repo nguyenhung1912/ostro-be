@@ -1,6 +1,9 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
-import { markConversationAsRead } from "../utils/conversationHelper.js";
+import {
+  markConversationAsRead,
+  CONVERSATION_POPULATE_PATHS,
+} from "../utils/conversationHelper.js";
 import { isValidObjectId } from "../utils/validation.js";
 import { io } from "../socket/index.js";
 import { createDirectConversation } from "./directConversationController.js";
@@ -33,15 +36,7 @@ export const getConversations = async (req, res) => {
       "participants.userId": userId,
     })
       .sort({ lastMessageAt: -1, updatedAt: -1 })
-      .populate({
-        path: "participants.userId",
-        select: "displayName avatarUrl",
-      })
-      .populate({
-        path: "lastMessage.senderId",
-        select: "displayName avatarUrl",
-      })
-      .populate({ path: "seenBy", select: "displayName avatarUrl" });
+      .populate(CONVERSATION_POPULATE_PATHS);
 
     const formattedConversations = conversations.map((conv) => ({
       ...conv.toObject(),
@@ -290,11 +285,7 @@ export const renameConversation = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
