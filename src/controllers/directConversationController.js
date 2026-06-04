@@ -1,41 +1,35 @@
-import { findOrCreateDirectConversation } from "../utils/conversationHelper.js";
-import { areValidObjectIds } from "../utils/validation.js";
+import {
+  findOrCreateDirectConversation,
+  CONVERSATION_POPULATE_PATHS,
+} from "../utils/conversationHelper.js";
+import { validateAndNormalizeMemberIds } from "../utils/validation.js";
 import { formatParticipants } from "./conversationController.js";
+import { io } from "../socket/index.js";
 
 export const createDirectConversation = async (req, res) => {
   try {
     const { memberIds } = req.body;
     const userId = req.user._id;
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    const validation = validateAndNormalizeMemberIds(memberIds);
+    if (!validation.valid) {
       return res
-        .status(400)
-        .json({ message: "Danh sách thành viên là bắt buộc." });
+        .status(validation.status)
+        .json({ message: validation.message });
     }
 
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
-
-    const normalizedMemberIds = memberIds.map((id) => id.toString());
-    const uniqueMemberIds = [...new Set(normalizedMemberIds)];
+    const { uniqueMemberIds } = validation;
 
     if (uniqueMemberIds.length !== 1) {
-      return res
-        .status(400)
-        .json({
-          message: "Cuộc trò chuyện trực tiếp chỉ được phép có một người nhận.",
-        });
+      return res.status(400).json({
+        message: "Cuộc trò chuyện trực tiếp chỉ được phép có một người nhận.",
+      });
     }
 
     if (uniqueMemberIds[0] === userId.toString()) {
-      return res
-        .status(400)
-        .json({
-          message: "Không thể tạo cuộc trò chuyện trực tiếp với chính mình.",
-        });
+      return res.status(400).json({
+        message: "Không thể tạo cuộc trò chuyện trực tiếp với chính mình.",
+      });
     }
 
     const conversation = await findOrCreateDirectConversation({
@@ -43,16 +37,14 @@ export const createDirectConversation = async (req, res) => {
       otherUserId: uniqueMemberIds[0],
     });
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
       participants: formatParticipants(conversation.participants),
     };
+
+    io.to(uniqueMemberIds[0]).emit("new-group", formatted);
 
     return res.status(201).json({ conversation: formatted });
   } catch (error) {

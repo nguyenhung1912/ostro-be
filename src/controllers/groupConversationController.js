@@ -1,8 +1,12 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { io } from "../socket/index.js";
-import { areValidObjectIds, isValidObjectId } from "../utils/validation.js";
+import {
+  isValidObjectId,
+  validateAndNormalizeMemberIds,
+} from "../utils/validation.js";
 import { formatParticipants } from "./conversationController.js";
+import { CONVERSATION_POPULATE_PATHS } from "../utils/conversationHelper.js";
 
 export const createGroupConversation = async (req, res) => {
   try {
@@ -10,22 +14,16 @@ export const createGroupConversation = async (req, res) => {
     const userId = req.user._id;
     const normalizedName = typeof name === "string" ? name.trim() : "";
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    const validation = validateAndNormalizeMemberIds(memberIds);
+    if (!validation.valid) {
       return res
-        .status(400)
-        .json({ message: "Danh sách thành viên là bắt buộc." });
+        .status(validation.status)
+        .json({ message: validation.message });
     }
 
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
+    const { uniqueMemberIds } = validation;
 
-    const normalizedMemberIds = memberIds.map((id) => id.toString());
-    const uniqueMemberIds = [...new Set(normalizedMemberIds)];
-
-    if (uniqueMemberIds.length !== normalizedMemberIds.length) {
+    if (uniqueMemberIds.length !== memberIds.length) {
       return res
         .status(400)
         .json({ message: "Danh sách thành viên không được trùng lặp." });
@@ -48,11 +46,7 @@ export const createGroupConversation = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
@@ -82,17 +76,17 @@ export const addGroupMembers = async (req, res) => {
         .json({ message: "Id cuộc trò chuyện không hợp lệ." });
     }
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    const validation = validateAndNormalizeMemberIds(
+      memberIds,
+      "Danh sách thành viên cần thêm là bắt buộc.",
+    );
+    if (!validation.valid) {
       return res
-        .status(400)
-        .json({ message: "Danh sách thành viên cần thêm là bắt buộc." });
+        .status(validation.status)
+        .json({ message: validation.message });
     }
 
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
+    const { uniqueMemberIds } = validation;
 
     const conversation = await Conversation.findOne({
       _id: conversationId,
@@ -110,8 +104,8 @@ export const addGroupMembers = async (req, res) => {
     const existingUserIds = new Set(
       conversation.participants.map((p) => p.userId.toString()),
     );
-    const newMemberIds = memberIds.filter(
-      (id) => !existingUserIds.has(id.toString()),
+    const newMemberIds = uniqueMemberIds.filter(
+      (id) => !existingUserIds.has(id),
     );
 
     if (newMemberIds.length === 0) {
@@ -127,11 +121,7 @@ export const addGroupMembers = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
@@ -175,21 +165,17 @@ export const leaveGroup = async (req, res) => {
     });
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
-        });
+      return res.status(404).json({
+        message:
+          "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
+      });
     }
 
     if (conversation.group.createdBy.toString() === userId.toString()) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Trưởng nhóm không thể rời nhóm, vui lòng chuyển quyền hoặc giải tán nhóm.",
-        });
+      return res.status(400).json({
+        message:
+          "Trưởng nhóm không thể rời nhóm, vui lòng chuyển quyền hoặc giải tán nhóm.",
+      });
     }
 
     conversation.participants = conversation.participants.filter(
