@@ -3,6 +3,7 @@ import http from "http";
 import express from "express";
 import { socketAuthMiddleware } from "../middlewares/socketMiddleware.js";
 import { getUserConversationsForSocketIO } from "../controllers/conversationController.js";
+import Conversation from "../models/Conversation.js";
 
 const app = express();
 
@@ -35,8 +36,18 @@ io.on("connection", async (socket) => {
     socket.join(id);
   });
 
-  socket.on("join-conversation", (conversationId) => {
-    socket.join(conversationId);
+  socket.on("join-conversation", async (conversationId) => {
+    try {
+      const hasAccess = await Conversation.exists({
+        _id: conversationId,
+        "participants.userId": user._id,
+      });
+      if (hasAccess) {
+        socket.join(conversationId);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tham gia cuộc trò chuyện qua socket:", err);
+    }
   });
 
   socket.join(userIdStr);
