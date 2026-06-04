@@ -38,11 +38,13 @@
 
 ## 📖 Introduction
 
-**Ostro Backend** is a powerful backend infrastructure designed to support real-time applications with scalability, security, and maintainability in mind.
+**Ostro Backend** is a modern and robust server-side architecture built with **Node.js (v22)**, **Express v5 (ES Modules)**, and **MongoDB**, designed to support high-performance real-time messaging, AI integrations, and administrative dashboards.
 
-Built with **Node.js**, **Express 5**, and **MongoDB**, the server provides a complete ecosystem for authentication, messaging, media handling, and AI-powered functionality.
+The server implements a state-of-the-art authentication flow, websocket communication, secure media handling, and advanced language models to offer features like summarization, task extraction, and translations.
 
-> 📝 **API Documentation:** Once the server is running, you can access the interactive API docs at [http://localhost:5001/api-docs/#/](http://localhost:5001/api-docs/#/)---
+> 📝 **API Swagger Documentation:** Once the server is running, you can access the interactive API Swagger documentation at [http://localhost:5001/api-docs/](http://localhost:5001/api-docs/)
+
+---
 
 ## ✨ Core Features
 
@@ -52,40 +54,21 @@ Built with **Node.js**, **Express 5**, and **MongoDB**, the server provides a co
 
 ### 🔐 Authentication & Security
 
-- JWT authentication
-- Google OAuth 2.0 login
-- Secure password hashing with bcrypt
-- Protected route middleware
+- JWT-based authentication with token cookie parsing.
+- Secure refresh token rotation via `POST /api/auth/refresh`.
+- Google OAuth 2.0 login integration.
+- Secure password hashing using `bcrypt`.
+- Custom Route Protection and Role Check middlewares.
 
 </td>
 <td width="50%">
 
-### 💬 Real-time Communication
+### 💬 Real-time WebSockets
 
-- WebSocket server powered by Socket.io
-- Live messaging system
-- Real-time event broadcasting
-
-</td>
-</tr>
-
-<tr>
-<td width="50%">
-
-### ☁️ Cloud File Upload
-
-- Cloudinary media storage
-- Multer file handling
-- Optimized media delivery
-
-</td>
-<td width="50%">
-
-### 🤖 AI Integration
-
-- Google Gemini integration
-- AI-powered capabilities
-- Extensible AI service layer
+- Socket.io server with authorization middleware.
+- Online/offline presence broadcasting via `online-users` event.
+- Live direct and group messaging with automatic socket rooms.
+- Real-time unread messages count updating.
 
 </td>
 </tr>
@@ -93,20 +76,48 @@ Built with **Node.js**, **Express 5**, and **MongoDB**, the server provides a co
 <tr>
 <td width="50%">
 
-### 🗄️ Database Architecture
+### 🤖 AI Integration (Gemini 2.5)
 
-- MongoDB database
-- Mongoose ODM
-- Structured schema management
+- Powered by `@google/genai` using `gemini-2.5-flash`.
+- **Summarization**: Condense recent chat history.
+- **Task Extraction**: Automatically pull action items from conversation.
+- **Title Generator**: Suggest names for group chats.
+- **Message Writing Tone**: Improve drafts to be professional, shorter, friendlier, or clearer.
+- **Translation**: Translate text between English and Vietnamese.
 
 </td>
 <td width="50%">
 
-### 🧩 Scalable Architecture
+### 👑 Admin Moderation Panel
 
-- Modular folder structure
-- Clean separation of concerns
-- Maintainable service-oriented design
+- Role-based route authorization (`admin` & `moderator`).
+- User Management: Update roles, ban/unban, or delete accounts.
+- Group Management: View all groups and delete inappropriate chats.
+- Server Analytics: Tracks Daily Active Users (DAU), Monthly Active Users (MAU), message volumes, and registration growths.
+
+</td>
+</tr>
+
+<tr>
+<td width="50%">
+
+### ☁️ Cloud File Uploads
+
+- Integrated with Multer and Cloudinary storage.
+- Supports secure user avatar and cover photo uploads.
+- Supports inline message image attachments.
+- Built-in file type validations and a strict 1MB size limit.
+
+</td>
+<td width="50%">
+
+### 🤝 Friend & Conversation Systems
+
+- Send, accept, decline, or cancel friend requests.
+- Block lists and friendship status checks.
+- Direct message and group chat creation, member adding, and group leaving.
+- Message recall system with real-time socket updates.
+- Conversation pinning and unpinning.
 
 </td>
 </tr>
@@ -118,16 +129,17 @@ Built with **Node.js**, **Express 5**, and **MongoDB**, the server provides a co
 
 <div align="center">
 
-| Layer               | Technologies                                      |
-| ------------------- | ------------------------------------------------- |
-| **Backend Runtime** | Node.js                                           |
-| **Framework**       | Express v5 (ES Modules)                           |
-| **Database**        | MongoDB • Mongoose                                |
-| **Authentication**  | JWT • bcrypt • Google Auth Library                |
-| **Real-time**       | Socket.io                                         |
-| **File Upload**     | Multer • Cloudinary                               |
-| **AI Integration**  | Google Gemini • @google/genai                     |
-| **Developer Tools** | Nodemon • ESLint • Prettier • Husky • Lint-staged |
+| Layer                | Technologies                                   |
+| :------------------- | :--------------------------------------------- |
+| **Backend Runtime**  | Node.js v22 (ES Modules)                       |
+| **Web Framework**    | Express v5.x                                   |
+| **Database**         | MongoDB • Mongoose v9.x                        |
+| **Real-time Engine** | Socket.io v4.x                                 |
+| **AI SDK**           | Google GenAI SDK (`@google/genai` v2.4.x)      |
+| **Authentication**   | JSON Web Tokens • Google Auth Library • bcrypt |
+| **Media Handler**    | Multer • Cloudinary SDK                        |
+| **API Docs**         | Swagger UI Express                             |
+| **Code Quality**     | ESLint v10.x • Prettier • Husky • Lint-staged  |
 
 </div>
 
@@ -138,22 +150,28 @@ Built with **Node.js**, **Express 5**, and **MongoDB**, the server provides a co
 ```bash
 ostro-be/
 │
-├── src/
-│   ├── controllers/            # Request handlers
-│   ├── libs/                   # Library configurations
-│   ├── middlewares/            # Express middlewares
-│   ├── models/                 # Database schemas
-│   ├── routes/                 # API route definitions
-│   ├── services/               # Business logic & external services
-│   ├── socket/                 # Socket.io event handlers
-│   ├── utils/                  # Utility helper functions
-│   └── server.js               # Application entry point
+├── .husky/                     # Git Hooks configurations
+├── public/                     # Static resources
+│   └── logo.svg                # Ostro Logo asset
 │
-├── .env
-├── .eslintrc.js
-├── .prettierrc
-├── package.json
-└── README.md
+├── src/
+│   ├── controllers/            # Request handlers (auth, user, admin, message, conversation, AI)
+│   ├── libs/                   # Library initializations (database connection)
+│   ├── middlewares/            # Custom Express and Socket middlewares
+│   ├── models/                 # Mongoose schemas (User, Conversation, Message, Friend, Session)
+│   ├── routes/                 # API route declarations (auth, user, admin, messages, conversations, AI)
+│   ├── services/               # Core services (aiService, authService, userService)
+│   ├── socket/                 # Socket.io server configuration and connection handlers
+│   ├── utils/                  # Utility helpers and validators
+│   ├── server.js               # Main application entry point
+│   └── swagger.json            # Swagger API documentation definition
+│
+├── .env                        # Local configuration environment variables (ignored in Git)
+├── .gitignore                  # Git ignored files and directories
+├── eslint.config.js            # ESLint modern flat config
+├── package.json                # Project script commands and dependencies
+├── pnpm-lock.yaml              # PNPM dependency lockfile
+└── pnpm-workspace.yaml         # PNPM workspace configurations
 ```
 
 ---
@@ -162,29 +180,19 @@ ostro-be/
 
 ## 📋 Prerequisites
 
-Ensure the following tools are installed before starting:
+Ensure the following environments are installed:
 
-| Tool    | Recommended Version |
-| ------- | ------------------- |
-| Node.js | v20+                |
-| MongoDB | Latest              |
-| pnpm    | Latest              |
-| Git     | Latest              |
+- **Node.js**: `v20.0.0` or higher
+- **MongoDB**: Community Server local or Atlas Cloud Database
+- **pnpm**: `v9.x` or higher
 
 ---
 
 ## ⚙️ Installation
 
-### 1️⃣ Clone Repository
+### 1️⃣ Install Dependencies
 
-```bash
-git clone https://github.com/your-org/ostro-be.git
-cd ostro-be
-```
-
----
-
-### 2️⃣ Install Dependencies
+From the workspace root or backend root, run:
 
 ```bash
 pnpm install
@@ -192,141 +200,119 @@ pnpm install
 
 ---
 
-### 3️⃣ Configure Environment Variables
+### 2️⃣ Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the `ostro-be` directory:
 
 ```env
-# Server
-PORT=5000
+# Server Config
+PORT=5001
 
-# Database
-MONGODB_URI=your_mongodb_connection
+# Database Connection
+MONGODB_CONNECTION_STRING=your_mongodb_connection_string
 
-# Authentication
-JWT_SECRET=your_secret_key
-GOOGLE_CLIENT_ID=your_google_client_id
+# Client URL (CORS and Socket.io)
+CLIENT_URL=http://localhost:5173
 
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+# Authentication Security Secrets
+ACCESS_TOKEN_SECRET=your_long_random_jwt_access_secret_key
 
-# AI
+# Cloudinary Config
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# Google OAuth 2.0 Integration
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+
+# Google Gemini API Key
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-> ⚠️ Never commit `.env` files to source control.
-
 ---
 
-### 4️⃣ Start Development Server
+### 3️⃣ Start Development Server
+
+Run the development server with automatic file reload:
 
 ```bash
 pnpm dev
 ```
 
-The server will start with Nodemon and automatically reload on file changes.
-
 ---
 
 ## 📜 Available Scripts
 
-| Command         | Description                            |
-| --------------- | -------------------------------------- |
-| `pnpm dev`      | Start development server using Nodemon |
-| `pnpm start`    | Start production server                |
-| `pnpm lint`     | Run ESLint checks                      |
-| `pnpm lint:fix` | Automatically fix lint issues          |
-| `pnpm format`   | Format code with Prettier              |
+The following commands are defined in `package.json`:
 
----
-
-## 🔌 Main Integrations
-
-| Service       | Purpose                  |
-| ------------- | ------------------------ |
-| MongoDB       | Primary database         |
-| Socket.io     | Real-time communication  |
-| Cloudinary    | Media storage & delivery |
-| Google OAuth  | Authentication           |
-| Google Gemini | AI-powered services      |
+| Command         | Description                                     |
+| :-------------- | :---------------------------------------------- |
+| `pnpm dev`      | Run backend in development mode with Nodemon    |
+| `pnpm start`    | Run server in production mode                   |
+| `pnpm lint`     | Analyze code styling and syntax using ESLint    |
+| `pnpm lint:fix` | Automatically resolve autofixable ESLint issues |
 
 ---
 
 # 🏗️ Architecture Overview
 
-## 📦 Layered Structure
+## 🔌 API Endpoints Reference
 
-```text
-Routes → Controllers → Services → Database
-```
+### 🔐 Authentication (`/api/auth`)
 
-### Responsibilities
+- `POST /signup` - Register a new account.
+- `POST /signin` - Traditional credential login.
+- `POST /google` - Exchange Google Token for local session.
+- `POST /signout` - Clear session tokens.
+- `POST /refresh` - Rotate Access Tokens using HTTP-only Refresh cookie.
 
-| Layer       | Responsibility                  |
-| ----------- | ------------------------------- |
-| Routes      | API endpoint definitions        |
-| Controllers | Request & response handling     |
-| Services    | Business logic                  |
-| Models      | Database schema management      |
-| Middlewares | Authentication & error handling |
-| Socket      | Real-time communication         |
+### 👤 User Operations (`/api/users`)
 
----
+- `GET /me` - Retrieve current logged-in profile.
+- `PATCH /me` - Edit profile info.
+- `PATCH /password` - Change account password.
+- `DELETE /me` - Permanently deactivate and delete account.
+- `GET /search` - Query registered users by username.
+- `POST /uploadAvatar` - Upload profile avatar image to Cloudinary (1MB limit).
+- `POST /uploadCover` - Upload profile cover photo to Cloudinary (1MB limit).
 
-# 🧪 Development Workflow
+### 💬 Conversations & Messaging (`/api/conversations` & `/api/messages`)
 
-## 🧹 Code Quality
+- `GET /conversations` - Retrieve all conversations user is a part of.
+- `POST /conversations` - Start a new direct conversation.
+- `DELETE /conversations/:id` - Delete a chat conversation history.
+- `PATCH /conversations/:id/rename` - Edit chat nickname or group name.
+- `PATCH /conversations/:id/pin` - Toggle pin conversation on top.
+- `PATCH /conversations/:id/add-members` - Invite users to a group conversation.
+- `POST /conversations/:id/leave` - Leave a group conversation.
+- `POST /messages/direct` - Send a direct message to a friend.
+- `POST /messages/group` - Send a message into a group conversation.
+- `POST /messages/upload-image` - Upload an image inside chat.
+- `PATCH /messages/:id/recall` - Recall/hide a message content.
 
-This project maintains high code quality standards using:
+### 🤖 Gemini AI Helper (`/api/ai`)
 
-- ESLint
-- Prettier
-- Husky
-- Lint-staged
-- Modular architecture
-- Consistent code conventions
+- `POST /summarize` - Summarize the last 50 messages of a conversation.
+- `POST /title` - Suggest an appropriate group title based on recent message contents.
+- `POST /actions` - Extract action tasks from recent conversation messages.
+- `POST /improve` - Improve a message draft (professional, shorter, friendlier, clearer).
+- `POST /translate` - Translate message drafts into English or Vietnamese.
 
----
+### 👑 Admin Moderation Panel (`/api/admin`)
 
-## 🌿 Git Branch Naming
-
-```bash
-feature/your-feature
-fix/your-bug
-refactor/your-module
-```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome.
-
-### Contribution Workflow
-
-1. Fork the repository
-2. Create a new feature branch
-3. Write clean and maintainable code
-4. Run lint checks
-5. Submit a Pull Request
+- `GET /users` - Retrieve all users list.
+- `PATCH /users/:id/role` - Elevate/demote user roles.
+- `PATCH /users/:id/ban` - Ban/unban user accounts.
+- `DELETE /users/:id` - Purge user from the system.
+- `GET /groups` - List all group chats in the system.
+- `DELETE /groups/:id` - Dissolve/delete a group chat.
+- `GET /analytics` - Retrieve active analytics metrics.
 
 ---
 
 # 📄 License
 
-This project is licensed under the **MIT License**.
-
-See the `LICENSE` file for more information.
-
----
-
-<div align="center">
-
-### ⭐ Built with modern backend technologies and scalable architecture
-
-</div>
+Licensed under the **MIT License**. See the `LICENSE` file for details.
 
 ---
 
@@ -337,56 +323,37 @@ See the `LICENSE` file for more information.
 
 ## 📖 Giới thiệu
 
-**Ostro Backend** là hệ thống backend mạnh mẽ được thiết kế để hỗ trợ các ứng dụng realtime với khả năng mở rộng cao, bảo mật tốt và dễ bảo trì.
+**Ostro Backend** là hệ thống máy chủ hiện đại được xây dựng dựa trên **Node.js (v22)**, **Express v5 (ES Modules)** và cơ sở dữ liệu **MongoDB**. Hệ thống được thiết kế để hỗ trợ kết nối realtime tốc độ cao, tích hợp các dịch vụ AI và cung cấp bảng điều khiển quản trị toàn diện.
 
-Được xây dựng bằng **Node.js**, **Express 5** và **MongoDB**, hệ thống cung cấp đầy đủ các chức năng từ xác thực người dùng, nhắn tin realtime, xử lý media đến tích hợp AI.
+Hệ thống tích hợp quy trình xác thực an toàn, giao tiếp qua WebSocket, quản lý file media đám mây và kết hợp các mô hình ngôn ngữ lớn để mang lại các tính năng thông minh như tóm tắt chat, trích xuất công việc, tối ưu văn bản và dịch ngôn ngữ trực tiếp.
 
-📝 Tài liệu API: Sau khi server khởi chạy, bạn có thể truy cập tài liệu API tại đường dẫn http://localhost:5001/api-docs/#/
+> 📝 **Tài liệu API Swagger:** Sau khi khởi động máy chủ thành công, bạn có thể truy cập tài liệu hướng dẫn API tương tác tại [http://localhost:5001/api-docs/](http://localhost:5001/api-docs/)
 
 ---
 
-## ✨ Tính năng nổi bật
+## ✨ Các tính năng nổi bật
 
 <table>
 <tr>
 <td width="50%">
 
-### 🔐 Xác thực & bảo mật
+### 🔐 Xác thực & Bảo mật
 
-- JWT Authentication
-- Đăng nhập Google OAuth 2.0
-- Mã hóa mật khẩu với bcrypt
-- Middleware bảo vệ route
-
-</td>
-<td width="50%">
-
-### 💬 Giao tiếp thời gian thực
-
-- WebSocket server với Socket.io
-- Hệ thống nhắn tin realtime
-- Broadcast sự kiện trực tiếp
-
-</td>
-</tr>
-
-<tr>
-<td width="50%">
-
-### ☁️ Upload file lên cloud
-
-- Lưu trữ media bằng Cloudinary
-- Xử lý upload với Multer
-- Tối ưu phân phối media
+- Xác thực dựa trên JWT kết hợp cookie-parser an toàn.
+- Cơ chế tự động làm mới token thông qua `POST /api/auth/refresh`.
+- Tích hợp đăng nhập nhanh qua Google OAuth 2.0.
+- Mã hóa mật khẩu người dùng bằng thư viện `bcrypt`.
+- Middleware phân quyền truy cập route và quyền admin/moderator chặt chẽ.
 
 </td>
 <td width="50%">
 
-### 🤖 Tích hợp AI
+### 💬 Kết nối Real-time WebSocket
 
-- Kết nối Google Gemini
-- Các tính năng hỗ trợ AI
-- Kiến trúc AI service mở rộng
+- WebSocket Server quản lý bởi thư viện Socket.io.
+- Phát trạng thái hoạt động của người dùng trực tiếp qua sự kiện `online-users`.
+- Nhắn tin trực tiếp và nhóm thời gian thực với cơ chế tự động quản lý room.
+- Cập nhật số lượng tin nhắn chưa đọc realtime.
 
 </td>
 </tr>
@@ -394,20 +361,48 @@ See the `LICENSE` file for more information.
 <tr>
 <td width="50%">
 
-### 🗄️ Kiến trúc cơ sở dữ liệu
+### 🤖 Tích hợp AI (Gemini 2.5)
 
-- MongoDB database
-- Mongoose ODM
-- Quản lý schema rõ ràng
+- Sử dụng bộ SDK `@google/genai` với mô hình `gemini-2.5-flash`.
+- **Tóm tắt hội thoại**: Tổng hợp nội dung các cuộc thảo luận gần đây.
+- **Trích xuất công việc**: Tự động nhận diện danh sách công việc (action items) từ tin nhắn chat.
+- **Đề xuất tên nhóm**: Gợi ý đặt tên nhóm dựa trên ngữ cảnh hội thoại.
+- **Tối ưu tin nhắn**: Thay đổi văn phong soạn thảo (Chuyên nghiệp, Ngắn gọn, Thân thiện, Dễ hiểu).
+- **Dịch tin nhắn**: Dịch tin nhắn nhanh giữa Tiếng Việt và Tiếng Anh.
 
 </td>
 <td width="50%">
 
-### 🧩 Kiến trúc mở rộng tốt
+### 👑 Bảng quản trị Admin
 
-- Cấu trúc module rõ ràng
-- Phân tách trách nhiệm hợp lý
-- Thiết kế dễ bảo trì
+- Phân quyền thao tác riêng biệt cho các vai trò `admin` và `moderator`.
+- Quản lý tài khoản: Đổi phân quyền, Khóa/Mở khóa tài khoản, Xóa người dùng.
+- Quản lý nhóm chat: Xem danh sách và giải tán các nhóm vi phạm tiêu chuẩn.
+- Thống kê hệ thống: Theo dõi lượng người dùng hoạt động ngày (DAU), tháng (MAU), tốc độ đăng ký mới và tần suất gửi tin nhắn.
+
+</td>
+</tr>
+
+<tr>
+<td width="50%">
+
+### ☁️ Upload file Media đám mây
+
+- Xử lý trung gian file với Multer và lưu trữ trên Cloudinary.
+- Hỗ trợ tải lên ảnh đại diện (avatar) và ảnh bìa (cover) của người dùng.
+- Đính kèm hình ảnh trực tiếp trong hội thoại chat.
+- Xác thực định dạng tệp tin và giới hạn dung lượng tải lên tối đa là 1MB.
+
+</td>
+<td width="50%">
+
+### 🤝 Hệ thống Bạn bè & Hội thoại
+
+- Gửi, chấp nhận, từ chối, hoặc thu hồi lời mời kết bạn.
+- Danh sách bạn bè và kiểm tra mối quan hệ bạn bè.
+- Tạo hội thoại trực tiếp/nhóm, thêm thành viên mới, và rời nhóm chat.
+- Tính năng thu hồi tin nhắn kèm cập nhật realtime qua websocket.
+- Ghim và bỏ ghim cuộc trò chuyện lên đầu danh sách.
 
 </td>
 </tr>
@@ -419,73 +414,70 @@ See the `LICENSE` file for more information.
 
 <div align="center">
 
-| Thành phần             | Công nghệ                                         |
-| ---------------------- | ------------------------------------------------- |
-| **Backend Runtime**    | Node.js                                           |
-| **Framework**          | Express v5 (ES Modules)                           |
-| **Database**           | MongoDB • Mongoose                                |
-| **Xác thực**           | JWT • bcrypt • Google Auth Library                |
-| **Realtime**           | Socket.io                                         |
-| **Upload file**        | Multer • Cloudinary                               |
-| **AI Integration**     | Google Gemini • @google/genai                     |
-| **Công cụ phát triển** | Nodemon • ESLint • Prettier • Husky • Lint-staged |
+| Thành phần             | Công nghệ                                      |
+| :--------------------- | :--------------------------------------------- |
+| **Môi trường chạy**    | Node.js v22 (ES Modules)                       |
+| **Framework**          | Express v5.x                                   |
+| **Cơ sở dữ liệu**      | MongoDB • Mongoose v9.x                        |
+| **Giao tiếp Realtime** | Socket.io v4.x                                 |
+| **AI SDK**             | Google GenAI SDK (`@google/genai` v2.4.x)      |
+| **Xác thực**           | JSON Web Tokens • Google Auth Library • bcrypt |
+| **Xử lý Tải file**     | Multer • Cloudinary SDK                        |
+| **Tài liệu API**       | Swagger UI Express                             |
+| **Công cụ phát triển** | ESLint v10.x • Prettier • Husky • Lint-staged  |
 
 </div>
 
 ---
 
-## 📂 Cấu trúc dự án
+## 📂 Cấu trúc thư mục dự án
 
 ```bash
 ostro-be/
 │
-├── src/
-│   ├── controllers/            # Xử lý request từ client
-│   ├── libs/                   # Cấu hình thư viện
-│   ├── middlewares/            # Middleware Express
-│   ├── models/                 # Schema cơ sở dữ liệu
-│   ├── routes/                 # Định nghĩa API routes
-│   ├── services/               # Logic nghiệp vụ
-│   ├── socket/                 # Xử lý Socket.io
-│   ├── utils/                  # Hàm tiện ích
-│   └── server.js               # Điểm khởi động ứng dụng
+├── .husky/                     # Cấu hình Git Hooks
+├── public/                     # Thư mục chứa tài nguyên tĩnh
+│   └── logo.svg                # Logo hệ thống Ostro
 │
-├── .env
-├── .eslintrc.js
-├── .prettierrc
-├── package.json
-└── README.md
+├── src/
+│   ├── controllers/            # Bộ điều hướng xử lý logic request (auth, user, admin, message, conversation, AI)
+│   ├── libs/                   # Cấu hình kết nối các thư viện (kết nối cơ sở dữ liệu MongoDB)
+│   ├── middlewares/            # Các middleware Express và Socket
+│   ├── models/                 # Định nghĩa các schema cơ sở dữ liệu Mongoose
+│   ├── routes/                 # Định nghĩa các endpoint API (auth, user, admin, messages, conversations, AI)
+│   ├── services/               # Tách lớp logic nghiệp vụ (aiService, authService, userService)
+│   ├── socket/                 # Cấu hình socket và lắng nghe kết nối thời gian thực
+│   ├── utils/                  # Hàm tiện ích dùng chung và bộ kiểm tra dữ liệu đầu vào
+│   ├── server.js               # File khởi động chính của ứng dụng
+│   └── swagger.json            # Định nghĩa Swagger tài liệu API
+│
+├── .env                        # Chứa các biến môi trường cấu hình cục bộ (được bỏ qua trong Git)
+├── .gitignore                  # Chỉ định các tệp không lưu trữ trên Git
+├── eslint.config.js            # Cấu hình kiểm tra cú pháp ESLint mới (flat config)
+├── package.json                # Định nghĩa dependencies và các script chạy dự án
+├── pnpm-lock.yaml              # Lockfile quản lý dependency của PNPM
+└── pnpm-workspace.yaml         # Cấu hình workspace của PNPM
 ```
 
 ---
 
-# 🚀 Bắt đầu sử dụng
+# 🚀 Hướng dẫn khởi chạy
 
 ## 📋 Yêu cầu hệ thống
 
-Đảm bảo đã cài đặt các công cụ sau:
+Hãy đảm bảo máy tính của bạn đã cài đặt sẵn:
 
-| Công cụ | Phiên bản khuyến nghị |
-| ------- | --------------------- |
-| Node.js | v20+                  |
-| MongoDB | Mới nhất              |
-| pnpm    | Mới nhất              |
-| Git     | Mới nhất              |
+- **Node.js**: phiên bản `v20.0.0` trở lên
+- **MongoDB**: Cơ sở dữ liệu local hoặc tài khoản đám mây MongoDB Atlas
+- **pnpm**: phiên bản `v9.x` trở lên
 
 ---
 
 ## ⚙️ Cài đặt
 
-### 1️⃣ Clone repository
+### 1️⃣ Cài đặt các thư viện phụ thuộc
 
-```bash
-git clone https://github.com/your-org/ostro-be.git
-cd ostro-be
-```
-
----
-
-### 2️⃣ Cài đặt dependencies
+Từ thư mục gốc dự án hoặc thư mục `ostro-be`, chạy lệnh:
 
 ```bash
 pnpm install
@@ -493,138 +485,116 @@ pnpm install
 
 ---
 
-### 3️⃣ Cấu hình biến môi trường
+### 2️⃣ Cấu hình biến môi trường
 
-Tạo file `.env` tại thư mục gốc:
+Tạo file `.env` nằm trong thư mục `ostro-be` với các giá trị sau:
 
 ```env
-# Server
-PORT=5000
+# Cấu hình Port
+PORT=5001
 
-# Database
-MONGODB_URI=your_mongodb_connection
+# Chuỗi kết nối MongoDB
+MONGODB_CONNECTION_STRING=your_mongodb_connection_string
 
-# Authentication
-JWT_SECRET=your_secret_key
-GOOGLE_CLIENT_ID=your_google_client_id
+# URL client frontend (CORS & Socket.io)
+CLIENT_URL=http://localhost:5173
 
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+# Khóa bí mật mã hóa JWT
+ACCESS_TOKEN_SECRET=your_long_random_jwt_access_secret_key
 
-# AI
+# Tích hợp Cloudinary lưu trữ ảnh
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# Cấu hình Client ID của Google OAuth 2.0
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+
+# Khóa API Google Gemini AI
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-> ⚠️ Không commit file `.env` lên repository.
-
 ---
 
-### 4️⃣ Khởi chạy môi trường phát triển
+### 3️⃣ Chạy Server ở môi trường phát triển
+
+Khởi động server kèm tính năng tự động khởi động lại khi sửa file (sử dụng Nodemon):
 
 ```bash
 pnpm dev
 ```
 
-Server sẽ chạy bằng Nodemon và tự động reload khi có thay đổi trong code.
+---
+
+## 📜 Các câu lệnh script
+
+Dưới đây là các câu lệnh có sẵn trong file `package.json`:
+
+| Câu lệnh        | Chức năng                                            |
+| :-------------- | :--------------------------------------------------- |
+| `pnpm dev`      | Chạy ứng dụng ở chế độ development với Nodemon       |
+| `pnpm start`    | Chạy ứng dụng ở chế độ production                    |
+| `pnpm lint`     | Phân tích lỗi cú pháp và code quality bằng ESLint    |
+| `pnpm lint:fix` | Tự động sửa các lỗi format có thể tự sửa bằng ESLint |
 
 ---
 
-## 📜 Các script hỗ trợ
+# 🏗️ Tổng quan API Endpoints
 
-| Lệnh            | Chức năng                |
-| --------------- | ------------------------ |
-| `pnpm dev`      | Chạy development server  |
-| `pnpm start`    | Chạy production server   |
-| `pnpm lint`     | Kiểm tra lỗi ESLint      |
-| `pnpm lint:fix` | Tự động sửa lỗi lint     |
-| `pnpm format`   | Format code với Prettier |
+### 🔐 Xác thực (`/api/auth`)
 
----
+- `POST /signup` - Đăng ký tài khoản mới.
+- `POST /signin` - Đăng nhập truyền thống bằng email và mật khẩu.
+- `POST /google` - Đăng nhập bằng mã Google OAuth 2.0.
+- `POST /signout` - Đăng xuất hệ thống và xóa session.
+- `POST /refresh` - Đổi mã token truy cập mới bằng HTTP-only Refresh cookie.
 
-## 🔌 Các tích hợp chính
+### 👤 Thông tin người dùng (`/api/users`)
 
-| Dịch vụ       | Mục đích            |
-| ------------- | ------------------- |
-| MongoDB       | Cơ sở dữ liệu chính |
-| Socket.io     | Giao tiếp realtime  |
-| Cloudinary    | Lưu trữ media       |
-| Google OAuth  | Xác thực người dùng |
-| Google Gemini | Dịch vụ AI          |
+- `GET /me` - Lấy thông tin cá nhân của tài khoản hiện tại.
+- `PATCH /me` - Cập nhật hồ sơ cá nhân.
+- `PATCH /password` - Thay đổi mật khẩu tài khoản.
+- `DELETE /me` - Hủy hoạt động và xóa tài khoản vĩnh viễn.
+- `GET /search` - Tìm kiếm người dùng khác bằng username.
+- `POST /uploadAvatar` - Tải ảnh đại diện lên Cloudinary (giới hạn 1MB).
+- `POST /uploadCover` - Tải ảnh bìa lên Cloudinary (giới hạn 1MB).
 
----
+### 💬 Trò chuyện & Tin nhắn (`/api/conversations` & `/api/messages`)
 
-# 🏗️ Tổng quan kiến trúc
+- `GET /conversations` - Lấy toàn bộ danh sách cuộc trò chuyện đã tham gia.
+- `POST /conversations` - Khởi tạo một cuộc hội thoại trực tiếp.
+- `DELETE /conversations/:id` - Xóa lịch sử cuộc trò chuyện.
+- `PATCH /conversations/:id/rename` - Đổi biệt danh hoặc đặt lại tên nhóm chat.
+- `PATCH /conversations/:id/pin` - Ghim/Bỏ ghim cuộc hội thoại lên đầu trang.
+- `PATCH /conversations/:id/add-members` - Thêm thành viên vào cuộc trò chuyện nhóm.
+- `POST /conversations/:id/leave` - Rời khỏi cuộc trò chuyện nhóm.
+- `POST /messages/direct` - Gửi tin nhắn trực tiếp đến bạn bè.
+- `POST /messages/group` - Gửi tin nhắn vào cuộc trò chuyện nhóm.
+- `POST /messages/upload-image` - Tải ảnh đính kèm trong tin nhắn.
+- `PATCH /messages/:id/recall` - Thu hồi một tin nhắn (ẩn nội dung).
 
-## 📦 Cấu trúc phân tầng
+### 🤖 Trợ lý AI thông minh (`/api/ai`)
 
-```text
-Routes → Controllers → Services → Database
-```
+- `POST /summarize` - Tóm tắt nội dung 50 tin nhắn chat gần nhất.
+- `POST /title` - Đề xuất tên nhóm chat dựa theo bối cảnh tin nhắn gần đây.
+- `POST /actions` - Tự động trích xuất danh sách công việc cần làm từ đoạn chat.
+- `POST /improve` - Cải thiện câu chữ soạn thảo (Chuyên nghiệp, Ngắn gọn, Thân thiện, Dễ hiểu).
+- `POST /translate` - Dịch nhanh nội dung tin nhắn sang Tiếng Anh hoặc Tiếng Việt.
 
-### Vai trò từng tầng
+### 👑 Điều phối & Quản trị viên (`/api/admin`)
 
-| Tầng        | Vai trò                         |
-| ----------- | ------------------------------- |
-| Routes      | Định nghĩa endpoint API         |
-| Controllers | Xử lý request/response          |
-| Services    | Logic nghiệp vụ                 |
-| Models      | Quản lý schema database         |
-| Middlewares | Authentication & error handling |
-| Socket      | Giao tiếp realtime              |
-
----
-
-# 🧪 Quy trình phát triển
-
-## 🧹 Chất lượng code
-
-Dự án duy trì tiêu chuẩn code cao với:
-
-- ESLint
-- Prettier
-- Husky
-- Lint-staged
-- Kiến trúc module rõ ràng
-- Quy ước code nhất quán
-
----
-
-## 🌿 Quy ước đặt tên branch
-
-```bash
-feature/ten-tinh-nang
-fix/ten-loi
-refactor/ten-module
-```
-
----
-
-## 🤝 Đóng góp
-
-Mọi đóng góp đều được hoan nghênh.
-
-### Quy trình đóng góp
-
-1. Fork repository
-2. Tạo branch tính năng mới
-3. Viết code sạch và dễ bảo trì
-4. Chạy kiểm tra lint
-5. Tạo Pull Request
+- `GET /users` - Lấy danh sách toàn bộ người dùng trong hệ thống.
+- `PATCH /users/:id/role` - Cập nhật phân quyền người dùng (admin, moderator, user).
+- `PATCH /users/:id/ban` - Khóa hoặc mở khóa hoạt động tài khoản.
+- `DELETE /users/:id` - Xóa tài khoản vĩnh viễn khỏi hệ thống.
+- `GET /groups` - Lấy danh sách tất cả các nhóm chat trên hệ thống.
+- `DELETE /groups/:id` - Xóa và giải tán một nhóm chat.
+- `GET /analytics` - Thống kê các chỉ số hoạt động của hệ thống.
 
 ---
 
 # 📄 Giấy phép
 
-Dự án được phát hành theo giấy phép **MIT License**.
-
-Xem file `LICENSE` để biết thêm thông tin.
-
----
-
-<div align="center">
-
-### ⭐ Xây dựng bằng công nghệ backend hiện đại và kiến trúc mở rộng mạnh mẽ
+Hệ thống được phân phối dưới giấy phép **MIT License**. Xem chi tiết tại tệp tin `LICENSE`.
 
 </div>
