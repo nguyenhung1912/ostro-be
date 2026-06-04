@@ -346,5 +346,3 @@ export const togglePinConversation = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
-
-export { addGroupMembers } from "./groupConversationController.js";
