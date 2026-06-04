@@ -6,6 +6,10 @@ import FriendRequest from "../models/FriendRequest.js";
 import Message from "../models/Message.js";
 import Session from "../models/Session.js";
 import User from "../models/User.js";
+import {
+  isStrongPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from "../utils/passwordPolicy.js";
 
 const normalizeString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -159,10 +163,14 @@ export const changePassword = async (req, res) => {
     const newPassword =
       typeof req.body.newPassword === "string" ? req.body.newPassword : "";
 
-    if (!currentPassword || newPassword.length < 6) {
+    if (!currentPassword || !newPassword) {
       return res
         .status(400)
         .json({ message: "Mật khẩu hiện tại và mật khẩu mới là bắt buộc." });
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: PASSWORD_POLICY_MESSAGE });
     }
 
     const user = await User.findById(userId).select("+hashedPassword");
