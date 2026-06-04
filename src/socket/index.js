@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 io.use(socketAuthMiddleware);
 
-const onlineUsers = new Map(); // {userId: Set<socketId>}
+export const onlineUsers = new Map(); // {userId: Set<socketId>}
 
 io.on("connection", async (socket) => {
   const user = socket.user;
