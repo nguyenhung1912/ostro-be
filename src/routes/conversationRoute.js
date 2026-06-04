@@ -6,11 +6,13 @@ import {
   markAsSeen,
   deleteConversation,
   renameConversation,
-  addGroupMembers,
   togglePinConversation,
 } from "../controllers/conversationController.js";
 import { checkFriendship } from "../middlewares/friendMiddleware.js";
-import { leaveGroup } from "../controllers/groupConversationController.js";
+import {
+  leaveGroup,
+  addGroupMembers,
+} from "../controllers/groupConversationController.js";
 
 const router = express.Router();
 
