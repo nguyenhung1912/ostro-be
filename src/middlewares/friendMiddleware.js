@@ -47,7 +47,10 @@ export const checkFriendship = async (req, res, next) => {
     }
 
     // Kiểm tra friendship với nhiều người (tạo nhóm)
-    if (!memberIds.every((id) => isValidObjectId(id))) {
+    if (
+      !Array.isArray(memberIds) ||
+      !memberIds.every((id) => isValidObjectId(id))
+    ) {
       return res
         .status(400)
         .json({ message: "Danh sách thành viên không hợp lệ." });
