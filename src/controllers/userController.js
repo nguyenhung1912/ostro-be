@@ -1,15 +1,13 @@
 import { uploadImageFromBuffer } from "../middlewares/uploadMiddleware.js";
 import bcrypt from "bcrypt";
-import Conversation from "../models/Conversation.js";
-import Friend from "../models/Friend.js";
-import FriendRequest from "../models/FriendRequest.js";
-import Message from "../models/Message.js";
 import Session from "../models/Session.js";
 import User from "../models/User.js";
 import {
   isStrongPassword,
   PASSWORD_POLICY_MESSAGE,
 } from "../utils/passwordPolicy.js";
+import { deleteUserAccountData } from "../services/userService.js";
+import { onlineUsers, io } from "../socket/index.js";
 
 const normalizeString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -216,46 +214,20 @@ export const deleteAccount = async (req, res) => {
       return res.status(401).json({ message: "Mật khẩu không đúng." });
     }
 
-    const directConversations = await Conversation.find({
-      type: "direct",
-      "participants.userId": userId,
-    }).select("_id");
-    const directConversationIds = directConversations.map((c) => c._id);
+    await deleteUserAccountData(userId);
 
-    const groupConversations = await Conversation.find({
-      type: "group",
-      "participants.userId": userId,
-    });
-
-    const groupUpdates = groupConversations.map(async (group) => {
-      group.participants = group.participants.filter(
-        (p) => p.userId.toString() !== userId.toString(),
-      );
-
-      if (group.participants.length === 0) {
-        await Conversation.findByIdAndDelete(group._id);
-        await Message.deleteMany({ conversationId: group._id });
-      } else {
-        if (group.group.createdBy.toString() === userId.toString()) {
-          const sorted = [...group.participants].sort(
-            (a, b) =>
-              new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime(),
-          );
-          group.group.createdBy = sorted[0].userId;
+    const userIdStr = userId.toString();
+    if (onlineUsers.has(userIdStr)) {
+      const sockets = onlineUsers.get(userIdStr);
+      sockets.forEach((socketId) => {
+        const socketObj = io.sockets.sockets.get(socketId);
+        if (socketObj) {
+          socketObj.disconnect(true);
         }
-        await group.save();
-      }
-    });
-
-    await Promise.all([
-      ...groupUpdates,
-      Session.deleteMany({ userId }),
-      Friend.deleteMany({ $or: [{ userA: userId }, { userB: userId }] }),
-      FriendRequest.deleteMany({ $or: [{ from: userId }, { to: userId }] }),
-      Message.deleteMany({ conversationId: { $in: directConversationIds } }),
-      Conversation.deleteMany({ _id: { $in: directConversationIds } }),
-      User.findByIdAndDelete(userId),
-    ]);
+      });
+      onlineUsers.delete(userIdStr);
+      io.emit("online-users", Array.from(onlineUsers.keys()));
+    }
 
     return res.sendStatus(204);
   } catch (error) {
