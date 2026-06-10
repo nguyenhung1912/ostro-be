@@ -91,7 +91,7 @@ app.use((err, req, res, _next) => {
   if (err?.code === "LIMIT_FILE_SIZE") {
     return res
       .status(400)
-      .json({ message: "File quá lớn. Giới hạn tối đa là 1MB." });
+      .json({ message: "File quá lớn. Giới hạn tối đa là 5MB." });
   }
   if (err?.code === "LIMIT_UNEXPECTED_FILE") {
     return res.status(400).json({ message: "Trường file không hợp lệ." });
