@@ -2,6 +2,7 @@ import { aiService } from "../services/aiService.js";
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
 
+// lấy tin nhắn gần đây
 const fetchRecentMessages = async (conversationId, limit = 50) => {
   const messages = await Message.find({ conversationId, isDeleted: false })
     .sort({ createdAt: -1 })
@@ -9,7 +10,7 @@ const fetchRecentMessages = async (conversationId, limit = 50) => {
     .populate("senderId", "displayName username")
     .lean();
 
-  return messages.reverse(); // Reverse to get chronological order
+  return messages.reverse();
 };
 
 const getConversationMessagesForAI = async (

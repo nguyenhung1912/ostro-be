@@ -166,7 +166,7 @@ export const deleteGroup = async (req, res) => {
     await Conversation.findByIdAndDelete(groupId);
     await Message.deleteMany({ conversationId: groupId });
 
-    io.to(groupId).emit("group-deleted", { conversationId: groupId });
+    io.to(groupId).emit("delete-conversation", { conversationId: groupId });
 
     return res.status(200).json({ message: "Xóa nhóm thành công" });
   } catch (err) {
@@ -215,13 +215,13 @@ export const getAnalytics = async (req, res) => {
             $dateToString: {
               format: "%Y-%m-%d",
               date: "$createdAt",
-              timezone: "+07:00",
+              timezone: "+07:00", // đồng bộ sang múi giờ VN
             },
           },
-          count: { $sum: 1 },
+          count: { $sum: 1 }, // đếm số lượng phần tử (giống COUNT(*))
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { _id: 1 } }, // 1 asc -1 desc
     ]);
 
     const registrationGrowth = await User.aggregate([
@@ -244,10 +244,12 @@ export const getAnalytics = async (req, res) => {
     const fillDates = (data, daysCount) => {
       const result = [];
       for (let i = daysCount - 1; i >= 0; i--) {
-        const dateObj = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-        const dd = String(dateObj.getDate()).padStart(2, "0");
+        const dateObj = new Date(
+          now.getTime() - i * 24 * 60 * 60 * 1000 + 7 * 60 * 60 * 1000,
+        );
+        const yyyy = dateObj.getUTCFullYear();
+        const mm = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(dateObj.getUTCDate()).padStart(2, "0");
         const dateStr = `${yyyy}-${mm}-${dd}`;
 
         const found = data.find((item) => item._id === dateStr);
