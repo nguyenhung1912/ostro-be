@@ -13,17 +13,17 @@ import {
   getDuplicateKeyMessage,
   hashRefreshToken,
   findSessionByRefreshToken,
+  REFRESH_TOKEN_TTL,
 } from "../services/authService.js";
 import {
   isStrongPassword,
   PASSWORD_POLICY_MESSAGE,
 } from "../utils/passwordPolicy.js";
 
-const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE_NAME = "refreshToken";
 const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
+  httpOnly: true, // block js read cookie
+  secure: true, // https
   sameSite: "none",
   path: "/",
 };

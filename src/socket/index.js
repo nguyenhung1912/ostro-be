@@ -10,6 +10,7 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
+  // Cross-Origin Resource Sharing
   cors: {
     origin: process.env.CLIENT_URL,
     credentials: true,
