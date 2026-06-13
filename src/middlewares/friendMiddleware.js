@@ -11,8 +11,7 @@ export const checkFriendship = async (req, res, next) => {
     const recipientId = req.body?.recipientId ?? null;
     const memberIds = req.body?.memberIds ?? [];
 
-    // Đã có conversationId (message tới conversation cũ), không cần kiểm tra friendship
-    if (conversationId && !recipientId && memberIds.length === 0) {
+    if (conversationId) {
       return next();
     }
 
