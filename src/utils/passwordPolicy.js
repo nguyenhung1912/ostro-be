@@ -14,6 +14,7 @@ export const isStrongPassword = (password) => {
 
   const hasLowercase = /[a-z]/.test(password);
   const hasUppercase = /[A-Z]/.test(password);
+  // /\d/ == [0 - 9]
   const hasNumber = /\d/.test(password);
   const hasSymbol = /[^A-Za-z0-9]/.test(password);
 
