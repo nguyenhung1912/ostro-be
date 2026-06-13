@@ -104,6 +104,7 @@ export const getMessages = async (req, res) => {
 
     if (messages.length > pageLimit) {
       messages.pop();
+      // đánh dấu tgian tnhan cũ
       nextCursor = messages[messages.length - 1].createdAt.toISOString();
     }
 
@@ -120,10 +121,11 @@ export const getMessages = async (req, res) => {
 
 export const getUserConversationsForSocketIO = async (userId) => {
   try {
-    const conversations = await Conversation.find(
-      { "participants.userId": userId },
-      { _id: 1 },
-    ).lean();
+    const conversations = await Conversation.find({
+      "participants.userId": userId,
+    })
+      .select("_id")
+      .lean();
 
     return conversations.map((c) => c._id.toString());
   } catch (error) {
@@ -168,6 +170,8 @@ export const markAsSeen = async (req, res) => {
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,
       {
+        // $addToSet -> k thêm trùng lặp
+        // $push -> thêm trùng lặp
         $addToSet: { seenBy: userId },
         $set: { [`unreadCounts.${userId}`]: 0 },
       },
