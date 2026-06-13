@@ -7,6 +7,7 @@ import {
 } from "../utils/validation.js";
 import { formatParticipants } from "./conversationController.js";
 import { CONVERSATION_POPULATE_PATHS } from "../utils/conversationHelper.js";
+import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
 
 export const createGroupConversation = async (req, res) => {
   try {
@@ -182,7 +183,7 @@ export const leaveGroup = async (req, res) => {
       (p) => p.userId.toString() !== userId.toString(),
     );
 
-    // Create system message
+    // create system message
     const systemMessage = new Message({
       conversationId: conversation._id,
       senderId: userId,
@@ -190,17 +191,37 @@ export const leaveGroup = async (req, res) => {
       isSystem: true,
     });
 
+    updateConversationAfterCreateMessage(conversation, systemMessage, userId);
+
     await Promise.all([conversation.save(), systemMessage.save()]);
 
-    await systemMessage.populate("senderId", "displayName avatarUrl");
+    await Promise.all([
+      systemMessage.populate("senderId", "displayName avatarUrl"),
+      conversation.populate(CONVERSATION_POPULATE_PATHS),
+    ]);
 
-    // Broadcast to remaining members
+    const formatted = {
+      ...conversation.toObject(),
+      unreadCounts: conversation.unreadCounts
+        ? Object.fromEntries(conversation.unreadCounts)
+        : {},
+      participants: formatParticipants(conversation.participants),
+    };
+
+    // broadcast to remaining members in the room conversationId
+    io.to(conversation._id.toString()).emit("new-message", {
+      message: systemMessage,
+      conversation: {
+        _id: conversation._id,
+        lastMessage: conversation.lastMessage,
+        lastMessageAt: conversation.lastMessageAt,
+      },
+      unreadCounts: Object.fromEntries(conversation.unreadCounts),
+    });
+
     conversation.participants.forEach((p) => {
-      io.to(p.userId.toString()).emit("new-message", systemMessage);
-      io.to(p.userId.toString()).emit("member-left", {
-        conversationId,
-        userId,
-      });
+      const pid = p.userId._id ? p.userId._id.toString() : p.userId.toString();
+      io.to(pid).emit("rename-conversation", { conversation: formatted });
     });
 
     return res.status(200).json({ message: "Đã rời nhóm thành công." });
