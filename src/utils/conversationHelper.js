@@ -6,15 +6,8 @@ export const CONVERSATION_POPULATE_PATHS = [
   { path: "lastMessage.senderId", select: "displayName avatarUrl" },
 ];
 
-const DIRECT_PARTICIPANT_COUNT = 2;
 const buildDirectKey = (userId, otherUserId) =>
   [userId.toString(), otherUserId.toString()].sort().join(":");
-
-const buildLegacyDirectConversationQuery = (userId, otherUserId) => ({
-  type: "direct",
-  "participants.userId": { $all: [userId, otherUserId] },
-  $expr: { $eq: [{ $size: "$participants" }, DIRECT_PARTICIPANT_COUNT] },
-});
 
 const buildDirectConversationQuery = (userId, otherUserId) => ({
   type: "direct",
@@ -27,12 +20,9 @@ export const findOrCreateDirectConversation = async ({
 }) => {
   const directKey = buildDirectKey(userId, otherUserId);
   const now = new Date();
-  const existingConversation = await Conversation.findOne({
-    $or: [
-      buildDirectConversationQuery(userId, otherUserId),
-      buildLegacyDirectConversationQuery(userId, otherUserId),
-    ],
-  }).sort({ createdAt: 1 });
+  const existingConversation = await Conversation.findOne(
+    buildDirectConversationQuery(userId, otherUserId),
+  );
 
   if (existingConversation) {
     const participantIds = existingConversation.participants.map((p) =>
@@ -51,12 +41,6 @@ export const findOrCreateDirectConversation = async ({
       });
       isModified = true;
     }
-
-    if (existingConversation.directKey !== directKey) {
-      existingConversation.directKey = directKey;
-      isModified = true;
-    }
-
     if (isModified) {
       try {
         await existingConversation.save();
