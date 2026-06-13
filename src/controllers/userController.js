@@ -208,9 +208,16 @@ export const deleteAccount = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng." });
     }
 
-    const passwordCorrect = await bcrypt.compare(password, user.hashedPassword);
+    if (user.hashedPassword) {
+      const passwordCorrect = await bcrypt.compare(
+        password,
+        user.hashedPassword,
+      );
 
-    if (!passwordCorrect) {
+      if (!passwordCorrect) {
+        return res.status(401).json({ message: "Mật khẩu không đúng." });
+      }
+    } else if (!user.googleId) {
       return res.status(401).json({ message: "Mật khẩu không đúng." });
     }
 
