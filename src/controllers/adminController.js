@@ -12,8 +12,6 @@ export const getAllUsers = async (req, res) => {
       let status = "offline";
       if (user.isBanned) {
         status = "banned";
-      } else if (!user.isActivated) {
-        status = "inactive";
       } else if (onlineUsers.has(user._id.toString())) {
         status = "online";
       }
