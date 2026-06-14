@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 export const isValidObjectId = (value) => mongoose.isValidObjectId(value);
 
-export const areValidObjectIds = (values) =>
+const areValidObjectIds = (values) =>
   Array.isArray(values) && values.every(isValidObjectId);
 
 export const validateAndNormalizeMemberIds = (
