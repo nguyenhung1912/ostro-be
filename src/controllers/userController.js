@@ -188,7 +188,7 @@ export const changePassword = async (req, res) => {
 
     user.hashedPassword = await bcrypt.hash(newPassword, 10);
     await user.save();
-    await Session.deleteMany({ userId, _id: { $ne: null } });
+    await Session.deleteMany({ userId });
 
     return res.status(200).json({ message: "Đổi mật khẩu thành công." });
   } catch (error) {
