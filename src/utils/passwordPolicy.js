@@ -1,4 +1,4 @@
-export const PASSWORD_MIN_LENGTH = 10;
+const PASSWORD_MIN_LENGTH = 10;
 
 export const PASSWORD_POLICY_MESSAGE =
   "Mật khẩu phải có ít nhất 10 ký tự và bao gồm chữ hoa, chữ thường, số, ký tự đặc biệt.";
