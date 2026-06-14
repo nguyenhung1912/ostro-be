@@ -27,7 +27,7 @@ export const generateUniqueUsername = async (email) => {
   return username;
 };
 
-export const getAccessTokenSecret = () => {
+const getAccessTokenSecret = () => {
   const secret = process.env.ACCESS_TOKEN_SECRET;
   if (!secret)
     throw new Error("Biến môi trường ACCESS_TOKEN_SECRET là bắt buộc");
