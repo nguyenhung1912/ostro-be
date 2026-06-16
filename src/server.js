@@ -8,7 +8,8 @@ import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import aiRoute from "./routes/aiRoute.js";
-import { protectedRoute } from "./middlewares/authMiddleware.js";
+import { protectedRoute, adminOnly } from "./middlewares/authMiddleware.js";
+import adminRoute from "./routes/adminRoute.js";
 import cors from "cors";
 import { app, server } from "./socket/index.js";
 import { v2 as cloudinary } from "cloudinary";
@@ -67,6 +68,7 @@ app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/conversations", conversationRoute);
 app.use("/api/ai", aiRoute);
+app.use("/api/admin", adminOnly, adminRoute);
 
 // graceful shutdown
 const startServer = async () => {
@@ -89,7 +91,7 @@ app.use((err, req, res, _next) => {
   if (err?.code === "LIMIT_FILE_SIZE") {
     return res
       .status(400)
-      .json({ message: "File quá lớn. Giới hạn tối đa là 1MB." });
+      .json({ message: "File quá lớn. Giới hạn tối đa là 5MB." });
   }
   if (err?.code === "LIMIT_UNEXPECTED_FILE") {
     return res.status(400).json({ message: "Trường file không hợp lệ." });

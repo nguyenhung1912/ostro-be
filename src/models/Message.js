@@ -6,7 +6,6 @@ const messageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",
       required: true,
-      index: true,
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -44,7 +43,6 @@ const messageSchema = new mongoose.Schema(
   },
 );
 
-// chặn gửi tin nhắn trống
 messageSchema.pre("validate", function () {
   if (!this.content && !this.imgUrl) {
     throw new Error("Tin nhắn phải có nội dung hoặc hình ảnh");

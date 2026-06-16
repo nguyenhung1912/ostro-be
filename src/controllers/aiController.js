@@ -2,6 +2,7 @@ import { aiService } from "../services/aiService.js";
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
 
+// lấy tin nhắn gần đây
 const fetchRecentMessages = async (conversationId, limit = 50) => {
   const messages = await Message.find({ conversationId, isDeleted: false })
     .sort({ createdAt: -1 })
@@ -9,36 +10,49 @@ const fetchRecentMessages = async (conversationId, limit = 50) => {
     .populate("senderId", "displayName username")
     .lean();
 
-  return messages.reverse(); // Reverse to get chronological order
+  return messages.reverse();
+};
+
+const getConversationMessagesForAI = async (
+  conversationId,
+  userId,
+  emptyMessage,
+) => {
+  const conversation = await Conversation.findOne({
+    _id: conversationId,
+    "participants.userId": userId,
+  });
+
+  if (!conversation) {
+    return {
+      error: "Không tìm thấy cuộc hội thoại hoặc bạn không có quyền truy cập.",
+      status: 404,
+    };
+  }
+
+  const messages = await fetchRecentMessages(conversationId);
+  if (!messages || messages.length === 0) {
+    return { error: emptyMessage, status: 400 };
+  }
+
+  return { messages };
 };
 
 export const summarizeConversation = async (req, res) => {
   try {
     const { conversationId } = req.body;
 
-    // Validate conversation access here if necessary (check if req.user._id is in conversation.participants)
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      "participants.userId": req.user._id,
-    });
+    const result = await getConversationMessagesForAI(
+      conversationId,
+      req.user._id,
+      "Không có tin nhắn nào để tóm tắt.",
+    );
 
-    if (!conversation) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Không tìm thấy cuộc hội thoại hoặc bạn không có quyền truy cập.",
-        });
+    if (result.error) {
+      return res.status(result.status).json({ message: result.error });
     }
 
-    const messages = await fetchRecentMessages(conversationId);
-    if (!messages || messages.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Không có tin nhắn nào để tóm tắt." });
-    }
-
-    const summary = await aiService.summarizeConversation(messages);
+    const summary = await aiService.summarizeConversation(result.messages);
     return res.status(200).json({ summary });
   } catch (error) {
     console.error("Lỗi summarizeConversation:", error);
@@ -52,25 +66,17 @@ export const generateGroupTitle = async (req, res) => {
   try {
     const { conversationId } = req.body;
 
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      "participants.userId": req.user._id,
-    });
+    const result = await getConversationMessagesForAI(
+      conversationId,
+      req.user._id,
+      "Không có tin nhắn nào để tạo tên.",
+    );
 
-    if (!conversation) {
-      return res
-        .status(404)
-        .json({ message: "Không tìm thấy cuộc hội thoại." });
+    if (result.error) {
+      return res.status(result.status).json({ message: result.error });
     }
 
-    const messages = await fetchRecentMessages(conversationId);
-    if (!messages || messages.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Không có tin nhắn nào để tạo tên." });
-    }
-
-    const title = await aiService.generateGroupTitle(messages);
+    const title = await aiService.generateGroupTitle(result.messages);
     return res.status(200).json({ title });
   } catch (error) {
     console.error("Lỗi generateGroupTitle:", error);
@@ -84,25 +90,17 @@ export const extractActionItems = async (req, res) => {
   try {
     const { conversationId } = req.body;
 
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      "participants.userId": req.user._id,
-    });
+    const result = await getConversationMessagesForAI(
+      conversationId,
+      req.user._id,
+      "Không có tin nhắn nào để trích xuất công việc.",
+    );
 
-    if (!conversation) {
-      return res
-        .status(404)
-        .json({ message: "Không tìm thấy cuộc hội thoại." });
+    if (result.error) {
+      return res.status(result.status).json({ message: result.error });
     }
 
-    const messages = await fetchRecentMessages(conversationId);
-    if (!messages || messages.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Không có tin nhắn nào để trích xuất công việc." });
-    }
-
-    const actionItems = await aiService.extractActionItems(messages);
+    const actionItems = await aiService.extractActionItems(result.messages);
     return res.status(200).json({ actionItems });
   } catch (error) {
     console.error("Lỗi extractActionItems:", error);

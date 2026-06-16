@@ -11,8 +11,7 @@ export const checkFriendship = async (req, res, next) => {
     const recipientId = req.body?.recipientId ?? null;
     const memberIds = req.body?.memberIds ?? [];
 
-    // Đã có conversationId (message tới conversation cũ), không cần kiểm tra friendship
-    if (conversationId && !recipientId && memberIds.length === 0) {
+    if (conversationId) {
       return next();
     }
 
@@ -47,7 +46,10 @@ export const checkFriendship = async (req, res, next) => {
     }
 
     // Kiểm tra friendship với nhiều người (tạo nhóm)
-    if (!memberIds.every((id) => isValidObjectId(id))) {
+    if (
+      !Array.isArray(memberIds) ||
+      !memberIds.every((id) => isValidObjectId(id))
+    ) {
       return res
         .status(400)
         .json({ message: "Danh sách thành viên không hợp lệ." });

@@ -13,13 +13,17 @@ import {
   getDuplicateKeyMessage,
   hashRefreshToken,
   findSessionByRefreshToken,
+  REFRESH_TOKEN_TTL,
 } from "../services/authService.js";
+import {
+  isStrongPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from "../utils/passwordPolicy.js";
 
-const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE_NAME = "refreshToken";
 const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
+  httpOnly: true, // block js read cookie
+  secure: true, // https
   sameSite: "none",
   path: "/",
 };
@@ -40,11 +44,13 @@ export const signUp = async (req, res) => {
       !normalizedFirstName ||
       !normalizedLastName
     ) {
-      return res
-        .status(400)
-        .json({
-          message: "Tên đăng nhập, mật khẩu, email, họ và tên là bắt buộc",
-        });
+      return res.status(400).json({
+        message: "Tên đăng nhập, mật khẩu, email, họ và tên là bắt buộc",
+      });
+    }
+
+    if (!isStrongPassword(normalizedPassword)) {
+      return res.status(400).json({ message: PASSWORD_POLICY_MESSAGE });
     }
 
     const duplicate = await User.findOne({
@@ -54,24 +60,25 @@ export const signUp = async (req, res) => {
       .lean();
 
     if (duplicate) {
-      return res
-        .status(409)
-        .json({
-          message: getDuplicateUserMessage(
-            duplicate,
-            normalizedUsername,
-            normalizedEmail,
-          ),
-        });
+      return res.status(409).json({
+        message: getDuplicateUserMessage(
+          duplicate,
+          normalizedUsername,
+          normalizedEmail,
+        ),
+      });
     }
 
     const hashedPassword = await bcrypt.hash(normalizedPassword, 10);
+    const count = await User.countDocuments();
+    const role = count === 0 ? "admin" : "user";
 
     await User.create({
       username: normalizedUsername,
       hashedPassword,
       email: normalizedEmail,
       displayName: `${normalizedLastName} ${normalizedFirstName}`,
+      role,
     });
 
     return res.sendStatus(201);
@@ -105,6 +112,10 @@ export const signIn = async (req, res) => {
       return res
         .status(401)
         .json({ message: "Tên đăng nhập hoặc mật khẩu không đúng" });
+    }
+
+    if (user.isBanned) {
+      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa." });
     }
 
     const passwordCorrect = await bcrypt.compare(
@@ -164,18 +175,26 @@ export const googleSignIn = async (req, res) => {
     });
 
     if (user) {
+      if (user.isBanned) {
+        return res
+          .status(403)
+          .json({ message: "Tài khoản của bạn đã bị khóa." });
+      }
       if (!user.googleId) {
         user.googleId = googleId;
         await user.save();
       }
     } else {
       const username = await generateUniqueUsername(normalizedEmail);
+      const count = await User.countDocuments();
+      const role = count === 0 ? "admin" : "user";
       user = await User.create({
         username,
         email: normalizedEmail,
         displayName: name || username,
         googleId,
         avatarUrl: picture,
+        role,
       });
     }
 

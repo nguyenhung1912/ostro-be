@@ -1,8 +1,13 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
 import { io } from "../socket/index.js";
-import { areValidObjectIds, isValidObjectId } from "../utils/validation.js";
+import {
+  isValidObjectId,
+  validateAndNormalizeMemberIds,
+} from "../utils/validation.js";
 import { formatParticipants } from "./conversationController.js";
+import { CONVERSATION_POPULATE_PATHS } from "../utils/conversationHelper.js";
+import { updateConversationAfterCreateMessage } from "../utils/messageHelper.js";
 
 export const createGroupConversation = async (req, res) => {
   try {
@@ -10,22 +15,16 @@ export const createGroupConversation = async (req, res) => {
     const userId = req.user._id;
     const normalizedName = typeof name === "string" ? name.trim() : "";
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    const validation = validateAndNormalizeMemberIds(memberIds);
+    if (!validation.valid) {
       return res
-        .status(400)
-        .json({ message: "Danh sách thành viên là bắt buộc." });
+        .status(validation.status)
+        .json({ message: validation.message });
     }
 
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
+    const { uniqueMemberIds } = validation;
 
-    const normalizedMemberIds = memberIds.map((id) => id.toString());
-    const uniqueMemberIds = [...new Set(normalizedMemberIds)];
-
-    if (uniqueMemberIds.length !== normalizedMemberIds.length) {
+    if (uniqueMemberIds.length !== memberIds.length) {
       return res
         .status(400)
         .json({ message: "Danh sách thành viên không được trùng lặp." });
@@ -48,11 +47,7 @@ export const createGroupConversation = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
@@ -82,17 +77,17 @@ export const addGroupMembers = async (req, res) => {
         .json({ message: "Id cuộc trò chuyện không hợp lệ." });
     }
 
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    const validation = validateAndNormalizeMemberIds(
+      memberIds,
+      "Danh sách thành viên cần thêm là bắt buộc.",
+    );
+    if (!validation.valid) {
       return res
-        .status(400)
-        .json({ message: "Danh sách thành viên cần thêm là bắt buộc." });
+        .status(validation.status)
+        .json({ message: validation.message });
     }
 
-    if (!areValidObjectIds(memberIds)) {
-      return res
-        .status(400)
-        .json({ message: "Danh sách thành viên không hợp lệ." });
-    }
+    const { uniqueMemberIds } = validation;
 
     const conversation = await Conversation.findOne({
       _id: conversationId,
@@ -110,8 +105,8 @@ export const addGroupMembers = async (req, res) => {
     const existingUserIds = new Set(
       conversation.participants.map((p) => p.userId.toString()),
     );
-    const newMemberIds = memberIds.filter(
-      (id) => !existingUserIds.has(id.toString()),
+    const newMemberIds = uniqueMemberIds.filter(
+      (id) => !existingUserIds.has(id),
     );
 
     if (newMemberIds.length === 0) {
@@ -127,11 +122,7 @@ export const addGroupMembers = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
@@ -175,28 +166,24 @@ export const leaveGroup = async (req, res) => {
     });
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({
-          message:
-            "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
-        });
+      return res.status(404).json({
+        message:
+          "Không tìm thấy nhóm trò chuyện hoặc bạn không phải thành viên.",
+      });
     }
 
     if (conversation.group.createdBy.toString() === userId.toString()) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Trưởng nhóm không thể rời nhóm, vui lòng chuyển quyền hoặc giải tán nhóm.",
-        });
+      return res.status(400).json({
+        message:
+          "Trưởng nhóm không thể rời nhóm, vui lòng chuyển quyền hoặc giải tán nhóm.",
+      });
     }
 
     conversation.participants = conversation.participants.filter(
       (p) => p.userId.toString() !== userId.toString(),
     );
 
-    // Create system message
+    // create system message
     const systemMessage = new Message({
       conversationId: conversation._id,
       senderId: userId,
@@ -204,17 +191,37 @@ export const leaveGroup = async (req, res) => {
       isSystem: true,
     });
 
+    updateConversationAfterCreateMessage(conversation, systemMessage, userId);
+
     await Promise.all([conversation.save(), systemMessage.save()]);
 
-    await systemMessage.populate("senderId", "displayName avatarUrl");
+    await Promise.all([
+      systemMessage.populate("senderId", "displayName avatarUrl"),
+      conversation.populate(CONVERSATION_POPULATE_PATHS),
+    ]);
 
-    // Broadcast to remaining members
+    const formatted = {
+      ...conversation.toObject(),
+      unreadCounts: conversation.unreadCounts
+        ? Object.fromEntries(conversation.unreadCounts)
+        : {},
+      participants: formatParticipants(conversation.participants),
+    };
+
+    // broadcast to remaining members in the room conversationId
+    io.to(conversation._id.toString()).emit("new-message", {
+      message: systemMessage,
+      conversation: {
+        _id: conversation._id,
+        lastMessage: conversation.lastMessage,
+        lastMessageAt: conversation.lastMessageAt,
+      },
+      unreadCounts: Object.fromEntries(conversation.unreadCounts),
+    });
+
     conversation.participants.forEach((p) => {
-      io.to(p.userId.toString()).emit("new-message", systemMessage);
-      io.to(p.userId.toString()).emit("member-left", {
-        conversationId,
-        userId,
-      });
+      const pid = p.userId._id ? p.userId._id.toString() : p.userId.toString();
+      io.to(pid).emit("rename-conversation", { conversation: formatted });
     });
 
     return res.status(200).json({ message: "Đã rời nhóm thành công." });
