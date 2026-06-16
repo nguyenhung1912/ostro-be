@@ -1,14 +1,13 @@
 import Conversation from "../models/Conversation.js";
 
-const DIRECT_PARTICIPANT_COUNT = 2;
+export const CONVERSATION_POPULATE_PATHS = [
+  { path: "participants.userId", select: "displayName avatarUrl" },
+  { path: "seenBy", select: "displayName avatarUrl" },
+  { path: "lastMessage.senderId", select: "displayName avatarUrl" },
+];
+
 const buildDirectKey = (userId, otherUserId) =>
   [userId.toString(), otherUserId.toString()].sort().join(":");
-
-const buildLegacyDirectConversationQuery = (userId, otherUserId) => ({
-  type: "direct",
-  "participants.userId": { $all: [userId, otherUserId] },
-  $expr: { $eq: [{ $size: "$participants" }, DIRECT_PARTICIPANT_COUNT] },
-});
 
 const buildDirectConversationQuery = (userId, otherUserId) => ({
   type: "direct",
@@ -21,23 +20,36 @@ export const findOrCreateDirectConversation = async ({
 }) => {
   const directKey = buildDirectKey(userId, otherUserId);
   const now = new Date();
-  const existingConversation = await Conversation.findOne({
-    $or: [
-      buildDirectConversationQuery(userId, otherUserId),
-      buildLegacyDirectConversationQuery(userId, otherUserId),
-    ],
-  }).sort({ createdAt: 1 });
+  const existingConversation = await Conversation.findOne(
+    buildDirectConversationQuery(userId, otherUserId),
+  );
 
   if (existingConversation) {
-    if (existingConversation.directKey !== directKey) {
+    const participantIds = existingConversation.participants.map((p) =>
+      p.userId.toString(),
+    );
+    let isModified = false;
+
+    if (!participantIds.includes(userId.toString())) {
+      existingConversation.participants.push({ userId, joinedAt: now });
+      isModified = true;
+    }
+    if (!participantIds.includes(otherUserId.toString())) {
+      existingConversation.participants.push({
+        userId: otherUserId,
+        joinedAt: now,
+      });
+      isModified = true;
+    }
+    if (isModified) {
       try {
-        existingConversation.directKey = directKey;
         await existingConversation.save();
       } catch (error) {
         if (error?.code === 11000) {
-          return Conversation.findOne(buildDirectConversationQuery(userId, otherUserId));
+          return Conversation.findOne(
+            buildDirectConversationQuery(userId, otherUserId),
+          );
         }
-
         throw error;
       }
     }

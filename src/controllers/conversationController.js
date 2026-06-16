@@ -1,6 +1,9 @@
 import Conversation from "../models/Conversation.js";
 import Message from "../models/Message.js";
-import { markConversationAsRead } from "../utils/conversationHelper.js";
+import {
+  markConversationAsRead,
+  CONVERSATION_POPULATE_PATHS,
+} from "../utils/conversationHelper.js";
 import { isValidObjectId } from "../utils/validation.js";
 import { io } from "../socket/index.js";
 import { createDirectConversation } from "./directConversationController.js";
@@ -33,15 +36,7 @@ export const getConversations = async (req, res) => {
       "participants.userId": userId,
     })
       .sort({ lastMessageAt: -1, updatedAt: -1 })
-      .populate({
-        path: "participants.userId",
-        select: "displayName avatarUrl",
-      })
-      .populate({
-        path: "lastMessage.senderId",
-        select: "displayName avatarUrl",
-      })
-      .populate({ path: "seenBy", select: "displayName avatarUrl" });
+      .populate(CONVERSATION_POPULATE_PATHS);
 
     const formattedConversations = conversations.map((conv) => ({
       ...conv.toObject(),
@@ -109,6 +104,7 @@ export const getMessages = async (req, res) => {
 
     if (messages.length > pageLimit) {
       messages.pop();
+      // đánh dấu tgian tnhan cũ
       nextCursor = messages[messages.length - 1].createdAt.toISOString();
     }
 
@@ -125,10 +121,11 @@ export const getMessages = async (req, res) => {
 
 export const getUserConversationsForSocketIO = async (userId) => {
   try {
-    const conversations = await Conversation.find(
-      { "participants.userId": userId },
-      { _id: 1 },
-    ).lean();
+    const conversations = await Conversation.find({
+      "participants.userId": userId,
+    })
+      .select("_id")
+      .lean();
 
     return conversations.map((c) => c._id.toString());
   } catch (error) {
@@ -173,6 +170,8 @@ export const markAsSeen = async (req, res) => {
     const updated = await Conversation.findByIdAndUpdate(
       conversationId,
       {
+        // $addToSet -> k thêm trùng lặp
+        // $push -> thêm trùng lặp
         $addToSet: { seenBy: userId },
         $set: { [`unreadCounts.${userId}`]: 0 },
       },
@@ -290,11 +289,7 @@ export const renameConversation = async (req, res) => {
 
     await conversation.save();
 
-    await conversation.populate([
-      { path: "participants.userId", select: "displayName avatarUrl" },
-      { path: "seenBy", select: "displayName avatarUrl" },
-      { path: "lastMessage.senderId", select: "displayName avatarUrl" },
-    ]);
+    await conversation.populate(CONVERSATION_POPULATE_PATHS);
 
     const formatted = {
       ...conversation.toObject(),
@@ -355,5 +350,3 @@ export const togglePinConversation = async (req, res) => {
     return res.status(500).json({ message: "Lỗi hệ thống." });
   }
 };
-
-export { addGroupMembers } from "./groupConversationController.js";
