@@ -45,7 +45,7 @@ export const updateUserRole = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { role },
-      { new: true },
+      { returnDocument: "after" },
     ).select("-hashedPassword");
 
     if (!updatedUser) {
