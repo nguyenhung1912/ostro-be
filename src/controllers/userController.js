@@ -60,7 +60,7 @@ export const uploadAvatar = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { avatarUrl: result.secure_url, avatarId: result.public_id },
-      { new: true },
+      { returnDocument: "after" },
     ).select("avatarUrl");
 
     if (!updatedUser?.avatarUrl) {
@@ -95,7 +95,7 @@ export const uploadCover = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { coverUrl: result.secure_url, coverId: result.public_id },
-      { new: true },
+      { returnDocument: "after" },
     ).select("coverUrl");
 
     if (!updatedUser?.coverUrl) {
@@ -139,7 +139,7 @@ export const updateProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { displayName, bio, phone },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     )
       .select("-hashedPassword")
       .lean();
