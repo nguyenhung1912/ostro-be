@@ -175,7 +175,7 @@ export const markAsSeen = async (req, res) => {
         $addToSet: { seenBy: userId },
         $set: { [`unreadCounts.${userId}`]: 0 },
       },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!updated) {
