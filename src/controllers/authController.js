@@ -20,11 +20,13 @@ import {
   PASSWORD_POLICY_MESSAGE,
 } from "../utils/passwordPolicy.js";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const REFRESH_COOKIE_NAME = "refreshToken";
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true, // block js read cookie
-  secure: true, // https
-  sameSite: "none",
+  secure: isProduction,
+  sameSite: process.env.COOKIE_SAME_SITE || (isProduction ? "none" : "lax"),
   path: "/",
 };
 
