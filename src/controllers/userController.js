@@ -1,4 +1,7 @@
-import { uploadImageFromBuffer } from "../middlewares/uploadMiddleware.js";
+import {
+  uploadImageFromBuffer,
+  ALLOWED_IMAGE_TYPES,
+} from "../middlewares/uploadMiddleware.js";
 import bcrypt from "bcrypt";
 import Session from "../models/Session.js";
 import User from "../models/User.js";
@@ -55,6 +58,12 @@ export const uploadAvatar = async (req, res) => {
         .json({ message: "Không có file nào được tải lên." });
     }
 
+    if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
+      return res
+        .status(400)
+        .json({ message: "Chỉ hỗ trợ file ảnh JPG, PNG hoặc WebP." });
+    }
+
     const result = await uploadImageFromBuffer(file.buffer);
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -85,6 +94,12 @@ export const uploadCover = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Không có file nào được tải lên." });
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
+      return res
+        .status(400)
+        .json({ message: "Chỉ hỗ trợ file ảnh JPG, PNG hoặc WebP." });
     }
 
     const result = await uploadImageFromBuffer(file.buffer, {

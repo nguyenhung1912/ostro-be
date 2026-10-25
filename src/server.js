@@ -96,6 +96,9 @@ app.use((err, req, res, _next) => {
   if (err?.code === "LIMIT_UNEXPECTED_FILE") {
     return res.status(400).json({ message: "Trường file không hợp lệ." });
   }
+  if (err?.code === "INVALID_FILE_TYPE") {
+    return res.status(400).json({ message: err.message });
+  }
   console.error("Lỗi không xử lý được:", err);
   return res.status(500).json({ message: "Lỗi hệ thống." });
 });
