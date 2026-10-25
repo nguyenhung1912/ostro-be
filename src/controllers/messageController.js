@@ -5,14 +5,36 @@ import {
   emitNewMessage,
   updateConversationAfterCreateMessage,
 } from "../utils/messageHelper.js";
-import { uploadImageFromBuffer } from "../middlewares/uploadMiddleware.js";
+import {
+  uploadImageFromBuffer,
+  ALLOWED_IMAGE_TYPES,
+} from "../middlewares/uploadMiddleware.js";
 import { isValidObjectId } from "../utils/validation.js";
 import { io } from "../socket/index.js";
 
 const normalizeMessageField = (value) =>
   typeof value === "string" ? value.trim() : "";
 
-const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+export const isAllowedImageUrl = (url) => {
+  if (!url) return true;
+  if (typeof url !== "string") return false;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
+    if (parsed.hostname !== "res.cloudinary.com") {
+      return false;
+    }
+    if (cloudName && !parsed.pathname.startsWith(`/${cloudName}/`)) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export const uploadMessageImage = async (req, res) => {
   try {
@@ -24,7 +46,7 @@ export const uploadMessageImage = async (req, res) => {
         .json({ message: "Không có file nào được tải lên." });
     }
 
-    if (!allowedImageTypes.has(file.mimetype)) {
+    if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
       return res
         .status(400)
         .json({ message: "Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP." });
@@ -64,6 +86,12 @@ export const sendDirectMessage = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Nội dung tin nhắn hoặc hình ảnh là bắt buộc." });
+    }
+
+    if (normalizedImgUrl && !isAllowedImageUrl(normalizedImgUrl)) {
+      return res.status(400).json({
+        message: "URL hình ảnh không hợp lệ hoặc không thuộc hệ thống.",
+      });
     }
 
     let conversation;
@@ -139,6 +167,12 @@ export const sendGroupMessage = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Nội dung tin nhắn hoặc hình ảnh là bắt buộc." });
+    }
+
+    if (normalizedImgUrl && !isAllowedImageUrl(normalizedImgUrl)) {
+      return res.status(400).json({
+        message: "URL hình ảnh không hợp lệ hoặc không thuộc hệ thống.",
+      });
     }
 
     const message = await Message.create({
