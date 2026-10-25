@@ -23,8 +23,8 @@ import {
 const REFRESH_COOKIE_NAME = "refreshToken";
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true, // block js read cookie
-  secure: true, // https
-  sameSite: "none",
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.COOKIE_SAME_SITE || "lax",
   path: "/",
 };
 
@@ -220,6 +220,21 @@ export const googleSignIn = async (req, res) => {
 
 export const signOut = async (req, res) => {
   try {
+    const origin = req.headers.origin;
+    if (origin && process.env.CLIENT_URL) {
+      try {
+        const allowedOrigin = new URL(process.env.CLIENT_URL).origin;
+        const requestOrigin = new URL(origin).origin;
+        if (allowedOrigin !== requestOrigin) {
+          return res.status(403).json({
+            message: "Yêu cầu không hợp lệ từ nguồn không tin cậy.",
+          });
+        }
+      } catch {
+        return res.status(400).json({ message: "Origin header không hợp lệ." });
+      }
+    }
+
     const token = req.cookies?.[REFRESH_COOKIE_NAME];
     if (token) {
       const tokenHash = hashRefreshToken(token);
