@@ -69,6 +69,24 @@ export const toggleUserBan = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
+    if (user._id.toString() === req.user._id.toString()) {
+      return res
+        .status(400)
+        .json({ message: "Không thể tự khóa tài khoản của chính mình." });
+    }
+
+    if (user.role === "admin") {
+      return res
+        .status(403)
+        .json({ message: "Không thể thao tác trên tài khoản Quản trị viên." });
+    }
+
+    if (req.user.role === "moderator" && user.role !== "user") {
+      return res.status(403).json({
+        message: "Moderator chỉ có quyền thao tác trên tài khoản Người dùng.",
+      });
+    }
+
     user.isBanned = !user.isBanned;
     await user.save();
 
@@ -112,9 +130,29 @@ export const toggleUserBan = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ message: "Chỉ Admin mới có quyền xóa tài khoản người dùng." });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({
+        message:
+          "Không thể tự xóa tài khoản của chính mình thông qua giao diện quản trị.",
+      });
+    }
+
+    if (user.role === "admin") {
+      return res
+        .status(403)
+        .json({ message: "Không thể xóa tài khoản Quản trị viên." });
     }
 
     await deleteUserAccountData(userId);
