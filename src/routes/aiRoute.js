@@ -6,7 +6,11 @@ import {
   improveMessage,
   translateMessage,
 } from "../controllers/aiController.js";
+import { aiRateLimiter } from "../middlewares/rateLimitMiddleware.js";
+
 const router = express.Router();
+
+router.use(aiRateLimiter);
 
 router.post("/summarize", summarizeConversation);
 router.post("/title", generateGroupTitle);

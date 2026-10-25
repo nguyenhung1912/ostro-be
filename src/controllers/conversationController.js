@@ -230,6 +230,16 @@ export const deleteConversation = async (req, res) => {
         .json({ message: "Không tìm thấy cuộc trò chuyện." });
     }
 
+    if (
+      conversation.type === "group" &&
+      conversation.group?.createdBy?.toString() === userId.toString()
+    ) {
+      return res.status(400).json({
+        message:
+          "Trưởng nhóm không thể xóa cuộc trò chuyện nhóm, vui lòng chuyển quyền hoặc giải tán nhóm.",
+      });
+    }
+
     conversation.participants = conversation.participants.filter(
       (p) => p.userId.toString() !== userId.toString(),
     );
