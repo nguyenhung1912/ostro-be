@@ -2,6 +2,8 @@ import { aiService } from "../services/aiService.js";
 import Message from "../models/Message.js";
 import Conversation from "../models/Conversation.js";
 
+const MAX_DRAFT_LENGTH = 2000;
+
 // lấy tin nhắn gần đây
 const fetchRecentMessages = async (conversationId, limit = 50) => {
   const messages = await Message.find({ conversationId, isDeleted: false })
@@ -113,8 +115,14 @@ export const extractActionItems = async (req, res) => {
 export const improveMessage = async (req, res) => {
   try {
     const { content, tone } = req.body;
-    if (!content) {
+    if (!content || typeof content !== "string" || !content.trim()) {
       return res.status(400).json({ message: "Nội dung tin nhắn trống." });
+    }
+
+    if (content.length > MAX_DRAFT_LENGTH) {
+      return res.status(400).json({
+        message: `Nội dung tin nhắn không được vượt quá ${MAX_DRAFT_LENGTH} ký tự.`,
+      });
     }
 
     const improved = await aiService.improveMessage(content, tone);
@@ -130,10 +138,21 @@ export const improveMessage = async (req, res) => {
 export const translateMessage = async (req, res) => {
   try {
     const { content, targetLanguage } = req.body;
-    if (!content || !targetLanguage) {
+    if (
+      !content ||
+      typeof content !== "string" ||
+      !content.trim() ||
+      !targetLanguage
+    ) {
       return res
         .status(400)
         .json({ message: "Thiếu nội dung hoặc ngôn ngữ đích." });
+    }
+
+    if (content.length > MAX_DRAFT_LENGTH) {
+      return res.status(400).json({
+        message: `Nội dung tin nhắn không được vượt quá ${MAX_DRAFT_LENGTH} ký tự.`,
+      });
     }
 
     const translated = await aiService.translateMessage(
@@ -142,6 +161,9 @@ export const translateMessage = async (req, res) => {
     );
     return res.status(200).json({ translated });
   } catch (error) {
+    if (error.message?.includes("không được hỗ trợ")) {
+      return res.status(400).json({ message: error.message });
+    }
     console.error("Lỗi translateMessage:", error);
     return res
       .status(500)
