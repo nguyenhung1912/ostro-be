@@ -58,7 +58,23 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// public routes
+// public routes & health check
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Ostro Backend is running!",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Ostro Backend is healthy!",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use("/api/auth", authRoute);
 
 // private routes
